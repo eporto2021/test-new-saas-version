@@ -1,0 +1,159 @@
+{% extends "web/app/app_base.html" %}
+{% load i18n %}
+
+{% block title %}{{ service.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            {{ service.name }}
+        </h1>
+        <p class="text-gray-600 dark:text-gray-300">
+            {{ service.description|default:"Upload and process your data files with custom cleansing logic." }}
+        </p>
+    </div>
+
+    <!-- File Upload Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8 border border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <i class="fa fa-upload mr-2"></i>
+            {% translate "Upload Data File" %}
+        </h2>
+        
+        <form method="post" enctype="multipart/form-data" id="file-upload-form">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="{{ form.file.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {% translate "Select a data file" %}
+                </label>
+                {{ form.file }}
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% translate "Supported formats: CSV, JSON, Excel (XLSX/XLS), TXT. Max size: 10MB" %}
+                </p>
+            </div>
+            
+            <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fa fa-upload mr-2"></i>
+                {% translate "Upload & Process" %}
+            </button>
+        </form>
+    </div>
+
+    <!-- Recent Files Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Uploaded Files -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                <i class="fa fa-file mr-2"></i>
+                {% translate "Recent Uploads" %}
+            </h3>
+            
+            {% if user_data_files %}
+                <div class="space-y-3">
+                    {% for file in user_data_files %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex-1">
+                                <div class="flex items-center">
+                                    <i class="fa fa-file-{% if file.file_type == 'csv' %}csv{% elif file.file_type == 'json' %}code{% elif file.file_type in 'xlsx,xls' %}excel{% else %}text{% endif %} mr-2 text-gray-500"></i>
+                                    <span class="font-medium text-gray-900 dark:text-white">{{ file.original_filename }}</span>
+                                </div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    {{ file.file_size_human }} • {{ file.created_at|date:"M d, Y H:i" }}
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if file.processing_status == 'completed' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300
+                                    {% elif file.processing_status == 'processing' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300
+                                    {% elif file.processing_status == 'failed' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300
+                                    {% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                                    {% if file.processing_status == 'completed' %}
+                                        <i class="fa fa-check mr-1"></i>Completed
+                                    {% elif file.processing_status == 'processing' %}
+                                        <i class="fa fa-spinner fa-spin mr-1"></i>Processing
+                                    {% elif file.processing_status == 'failed' %}
+                                        <i class="fa fa-times mr-1"></i>Failed
+                                    {% else %}
+                                        <i class="fa fa-clock mr-1"></i>Pending
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i class="fa fa-file-upload text-4xl mb-4"></i>
+                    <p>{% translate "No files uploaded yet. Upload your first data file to get started!" %}</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Processed Data -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                <i class="fa fa-chart-line mr-2"></i>
+                {% translate "Processed Data" %}
+            </h3>
+            
+            {% if processed_data %}
+                <div class="space-y-3">
+                    {% for data in processed_data %}
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium text-gray-900 dark:text-white">
+                                    {{ data.data_file.original_filename }}
+                                </span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">
+                                    {{ data.created_at|date:"M d, Y H:i" }}
+                                </span>
+                            </div>
+                            
+                            {% if data.summary_data %}
+                                <div class="text-sm text-gray-600 dark:text-gray-300">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <span class="font-medium">Rows:</span> {{ data.summary_data.processed_rows|default:"N/A" }}
+                                        </div>
+                                        <div>
+                                            <span class="font-medium">Columns:</span> {{ data.summary_data.columns|length|default:"N/A" }}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-2">
+                                    <a href="{{ data.processed_file.url }}" 
+                                       class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                        <i class="fa fa-download mr-1"></i>
+                                        {% translate "Download Processed File" %}
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i class="fa fa-chart-bar text-4xl mb-4"></i>
+                    <p>{% translate "No processed data yet. Upload a file to see processed results here!" %}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh processing status
+document.addEventListener('DOMContentLoaded', function() {
+    const processingFiles = document.querySelectorAll('[data-status="processing"]');
+    
+    if (processingFiles.length > 0) {
+        // Refresh page every 5 seconds if there are processing files
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "web/app/app_base.html" %}
+{% load i18n %}
+
+{% block title %}{{ service.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex items-center mb-4">
+            <i class="{{ service.icon }} text-3xl text-blue-600 mr-4"></i>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {{ service.name }}
+                </h1>
+                <p class="text-gray-600 dark:text-gray-300">
+                    {% translate "Welcome to your service dashboard" %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if service.description %}
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                {% translate "About this service" %}
+            </h2>
+            <p class="text-blue-800 dark:text-blue-200">
+                {{ service.description }}
+            </p>
+        </div>
+    {% endif %}
+
+    <!-- Service-specific content goes here -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {% translate "Service Features" %}
+            </h3>
+            <ul class="space-y-3">
+                <li class="flex items-center">
+                    <i class="fa fa-check text-green-600 mr-3"></i>
+                    <span class="text-gray-700 dark:text-gray-300">{% translate "Full access to all features" %}</span>
+                </li>
+                <li class="flex items-center">
+                    <i class="fa fa-check text-green-600 mr-3"></i>
+                    <span class="text-gray-700 dark:text-gray-300">{% translate "24/7 support" %}</span>
+                </li>
+                <li class="flex items-center">
+                    <i class="fa fa-check text-green-600 mr-3"></i>
+                    <span class="text-gray-700 dark:text-gray-300">{% translate "Regular updates" %}</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {% translate "Quick Actions" %}
+            </h3>
+            <div class="space-y-3">
+                <button class="w-full text-left px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                    <i class="fa fa-cog mr-3"></i>
+                    {% translate "Service Settings" %}
+                </button>
+                <button class="w-full text-left px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                    <i class="fa fa-chart-bar mr-3"></i>
+                    {% translate "View Analytics" %}
+                </button>
+                <button class="w-full text-left px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                    <i class="fa fa-question-circle mr-3"></i>
+                    {% translate "Get Help" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Replace this section with your actual service content -->
+    <div class="mt-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+            {% translate "Customize this template" %}
+        </h3>
+        <p class="text-yellow-700 dark:text-yellow-300">
+            {% translate "This is a template for your service. Replace the content in this template with your actual service functionality." %}
+        </p>
+        <p class="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+            <strong>{% translate "Template location:" %}</strong> <code>templates/services/service_template.html</code>
+        </p>
+    </div>
+</div>
+{% endblock %}

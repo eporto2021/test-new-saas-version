@@ -1,0 +1,34 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+{% block app %}
+<div>
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1 class="pg-title">{% translate "Store" %}</h1>
+    <!-- <a class="pg-button-secondary" href="{% url 'ecommerce:purchases' %}">{% translate "Purchases" %}</a> -->
+  </div>
+  
+  {# Show ecommerce products if any #}
+  {% if products %}
+    <div class="mt-6">
+      <h2 class="pg-subtitle">{% translate "One-time Purchases" %}</h2>
+      <p class="mt-2 mb-4">{% translate "Purchase once, own forever" %}</p>
+      {% for product_config in products %}
+        {% if forloop.counter0|divisibleby:3 %}<div class="pg-columns mt-2">{% endif %}
+        <div class="pg-column-one-third">
+         {% include "ecommerce/components/product_card.html" %}
+        </div>
+        {% if forloop.counter|divisibleby:3 %}</div>{% endif %}
+      {% endfor %}
+      {% if not forloop.counter|divisibleby:3 %}</div>{% endif %}
+    </div>
+  {% endif %}
+  
+  {# Always show subscription products if any #}
+  {% if subscription_products %}
+    <div class="mt-8 pt-6" style="border-top: 1px solid #e5e7eb;">
+      {% include 'ecommerce/components/products_empty.html' with subscription_products=subscription_products %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

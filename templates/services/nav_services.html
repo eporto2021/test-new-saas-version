@@ -1,0 +1,10 @@
+{% load i18n %}
+{% for service in accessible_services %}
+<li>
+  <a href="{% url 'services:generic_service' service.slug %}" 
+     {% if 'services/'|add:service.slug in request.path %}class="menu-active"{% endif %}>
+    <i class="{{ service.icon }} h-4 w-4"></i>
+    {{ service.name }}
+  </a>
+</li>
+{% endfor %}

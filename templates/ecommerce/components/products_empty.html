@@ -1,0 +1,111 @@
+{% load static %}
+{% load i18n %}
+{% load subscription_tags %}
+
+{% if subscription_products %}
+<h2 class="pg-subtitle">{% translate "Available Subscription Plans" %}</h2>
+<p class="mt-2 mb-4">
+  {% translate "Choose from our subscription plans to get started:" %}
+</p>
+  <div class="subscription-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto;">
+    {% for product in subscription_products %}
+      {% comment %}Skip products that user has already subscribed to{% endcomment %}
+      {% user_has_active_subscription_for_product user product.product.id as has_subscription %}
+      {% if not has_subscription %}
+      <div class="subscription-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; border: 1px solid #e5e7eb;">
+        <div class="card-header" style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid #f3f4f6;">
+          <h3 style="font-size: 1.25rem; font-weight: 600; color: #111827; margin: 0 0 0.5rem 0;">{{ product.metadata.name }}</h3>
+          <p style="color: #6b7280; font-size: 0.875rem; margin: 0; line-height: 1.4;">{{ product.metadata.description }}</p>
+        </div>
+        
+        <div class="card-body" style="padding: 1rem 1.5rem;">
+          {% with product_dict=product.to_dict %}
+            {% if product_dict.active_prices %}
+              <div class="pricing-section" style="margin-bottom: 1.5rem;">
+                {% for interval, price_info in product_dict.active_prices.items %}
+                  {% if price_info %}
+                    <div style="display: flex; align-items: baseline; margin-bottom: 0.25rem;">
+                      <span style="font-size: 1.5rem; font-weight: 700; color: #111827;">{{ price_info.payment_amount }}</span>
+                      <span style="font-size: 0.875rem; color: #6b7280; margin-left: 0.25rem;">/ {{ interval }}</span>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+          
+          <div class="features-section" style="margin-bottom: 1.5rem;">
+            <ul style="list-style: none; padding: 0; margin: 0;">
+              {% for feature in product.metadata.features %}
+                <li style="display: flex; align-items: flex-start; margin-bottom: 0.5rem; font-size: 0.875rem; line-height: 1.4;">
+                  <span style="color: #10b981; margin-right: 0.5rem; margin-top: 0.125rem; flex-shrink: 0;">
+                    <i class="fa fa-check" style="font-size: 0.75rem;"></i>
+                  </span>
+                  <span style="color: #374151;">{{ feature }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        
+        <div class="card-footer" style="padding: 1rem 1.5rem 1.5rem 1.5rem; border-top: 1px solid #f3f4f6;">
+          <!-- Check subscription availability and request status -->
+          {% is_subscription_available_for_purchase product.product.id user as is_available_for_purchase %}
+          {% user_has_requested_subscription user product.product.id as has_requested %}
+          
+          {% if is_available_for_purchase %}
+            <!-- Subscription is available for direct purchase - show subscribe buttons -->
+            {% with product_dict=product.to_dict %}
+              {% if product_dict.active_prices %}
+                <div style="margin-bottom: 0.75rem;">
+                  <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem; text-align: center;">
+                    {% translate "Available for immediate subscription" %}
+                  </p>
+                  {% for interval, price_info in product_dict.active_prices.items %}
+                    {% if price_info %}
+                      <form action="{% url 'subscriptions:create_checkout_session' %}" method="POST" style="margin-bottom: 0.5rem;">
+                        {% csrf_token %}
+                        <input type="hidden" name="priceId" value="{{ price_info.id }}">
+                        <button type="submit" 
+                                style="display: block; width: 100%; padding: 0.75rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 600; cursor: pointer; transition: background-color 0.2s ease;"
+                                onmouseover="this.style.backgroundColor='#2563eb'" 
+                                onmouseout="this.style.backgroundColor='#3b82f6'">
+                          {% translate "Subscribe" %} - {{ price_info.payment_amount }}/{{ interval }}
+                        </button>
+                      </form>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+          {% elif has_requested %}
+            <!-- User has requested but subscription not yet available for purchase -->
+            <div style="margin-bottom: 0.75rem; padding: 0.75rem 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; text-align: center;">
+              <div style="color: #0c4a6e; font-weight: 600; margin-bottom: 0.25rem;">
+                <i class="fa fa-check-circle" style="margin-right: 0.5rem; color: #10b981;"></i>
+                {% translate "Request Submitted" %}
+              </div>
+              <div style="color: #075985; font-size: 0.875rem; line-height: 1.4;">
+                {% translate "Great, a team member will be in touch to discuss the suitability of this subscription for your business." %}
+              </div>
+            </div>
+          {% else %}
+            <!-- Subscription not available for purchase yet - show request button -->
+            <form action="{% url 'subscriptions:request_subscription' product.product.id %}" method="POST" style="margin-bottom: 0.75rem;">
+              {% csrf_token %}
+              <button type="submit" 
+                      style="display: block; width: 100%; padding: 0.75rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 600; cursor: pointer; transition: background-color 0.2s ease;"
+                      onmouseover="this.style.backgroundColor='#059669'" 
+                      onmouseout="this.style.backgroundColor='#10b981'">
+                <i class="fa fa-paper-plane" style="margin-right: 0.5rem;"></i>
+                {% translate "Request Subscription" %}
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+

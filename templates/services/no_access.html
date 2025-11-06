@@ -1,0 +1,64 @@
+{% extends "web/app/app_base.html" %}
+{% load i18n %}
+
+{% block title %}{{ service.name }} - Access Required{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto text-center">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 border border-gray-200 dark:border-gray-700">
+            <div class="mb-6">
+                <i class="fa fa-lock text-6xl text-gray-400 mb-4"></i>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    {% translate "Access Required" %}
+                </h1>
+                <p class="text-gray-600 dark:text-gray-300">
+                    {% blocktranslate with service_name=service.name %}
+                        You need an active subscription to access {{ service_name }}.
+                    {% endblocktranslate %}
+                </p>
+            </div>
+            
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    {% translate "What you'll get with this service:" %}
+                </h2>
+                <ul class="text-left space-y-2 text-gray-600 dark:text-gray-300">
+                    <li class="flex items-center">
+                        <i class="fa fa-check text-green-500 mr-3"></i>
+                        {% translate "Upload and process data files" %}
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fa fa-check text-green-500 mr-3"></i>
+                        {% translate "Custom data cleansing logic" %}
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fa fa-check text-green-500 mr-3"></i>
+                        {% translate "Download processed results" %}
+                    </li>
+                    <li class="flex items-center">
+                        <i class="fa fa-check text-green-500 mr-3"></i>
+                        {% translate "Data processing history" %}
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="space-y-4">
+                <a href="{{ upgrade_url }}" 
+                   class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium">
+                    <i class="fa fa-arrow-up mr-2"></i>
+                    {% translate "Upgrade Your Subscription" %}
+                </a>
+                
+                <div>
+                    <a href="{% url 'web:home' %}" 
+                       class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fa fa-arrow-left mr-1"></i>
+                        {% translate "Back to Dashboard" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

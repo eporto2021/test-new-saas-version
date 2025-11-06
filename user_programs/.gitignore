@@ -1,0 +1,20 @@
+# Ignore all user data files
+*/*/uploads/*
+*/*/processed/*
+
+# Keep the directory structure
+!*/*/uploads/.gitkeep
+!*/*/processed/.gitkeep
+
+# Optionally, you may want to commit templates and config but not user data
+# Uncomment these if you want to version control templates:
+# !*/*/template.html
+# !*/*/config.json
+# !*/*/cloud_function_url.txt
+
+# Or ignore everything except .gitkeep files
+*
+!.gitignore
+!README.md
+!*/.gitkeep
+

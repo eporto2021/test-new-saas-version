@@ -1,0 +1,81 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+{% block app %}
+<section class="app-card">
+  <div class="pg-columns pg-columns-reversed">
+    <div class="pg-column-one-quarter">
+      <img src="{% static 'images/undraw/undraw_joyride.svg' %}" alt="Yay!">
+    </div>
+    <div class="pg-column">
+      <h1 class="pg-title">{% translate "My Subscriptions" %}</h1>
+      <h2 class="pg-subtitle">{% translate "You're subscribed to one or more plans. Thanks for the support!" %}</h2>
+    </div>
+  </div>
+  
+  {% if all_subscriptions %}
+    <h2 class="pg-subtitle mt-4">{% translate "All Active Subscriptions" %}</h2>
+    <div class="overflow-x-auto">
+      <table class="table pg-table w-full">
+        <thead>
+          <tr>
+            <th>{% translate "Subscription" %}</th>
+            <th>{% translate "Status" %}</th>
+            <th>{% translate "Products" %}</th>
+            <th>{% translate "Billing" %}</th>
+            <th>{% translate "Next Payment" %}</th>
+            <th>{% translate "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in all_subscriptions %}
+            <tr>
+              <td>
+                <div class="font-semibold">{{ sub.display_name }}</div>
+                <div class="text-sm text-gray-500">{% translate "Since" %} {{ sub.start_date.date }}</div>
+              </td>
+              <td>
+                <span class="badge badge-success">{{ sub.status|title }}</span>
+                {% if sub.is_trialing %}
+                  <div class="text-sm text-gray-500">{% translate "Trial" %}</div>
+                {% endif %}
+              </td>
+              <td>
+                {% for product in sub.products %}
+                  <div class="text-sm">{{ product.name }}</div>
+                {% endfor %}
+              </td>
+              <td>
+                <div class="text-sm">{{ sub.billing_interval|title }}</div>
+                {% if sub.cancel_at_period_end %}
+                  <div class="text-sm text-red-500">{% translate "Cancels" %} {{ sub.current_period_end.date }}</div>
+                {% endif %}
+              </td>
+              <td>
+                {% if not sub.cancel_at_period_end %}
+                  <div class="text-sm">{{ sub.current_period_end.date }}</div>
+                {% else %}
+                  <div class="text-sm text-gray-500">{% translate "N/A" %}</div>
+                {% endif %}
+              </td>
+              <td>
+                <form method="POST" action="{{ subscription_urls.create_stripe_portal_session }}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline">{% translate "Manage" %}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+  
+  {% if all_subscriptions %}
+  <form method="POST" action="{{ subscription_urls.create_stripe_portal_session }}" class="mt-4">
+    {% csrf_token %}
+    <button type="submit" class="pg-button-secondary">{% translate "Manage Billing" %}</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

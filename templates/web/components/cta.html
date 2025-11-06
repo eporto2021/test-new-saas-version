@@ -1,0 +1,47 @@
+<div class="bg-indigo-50 dark:bg-indigo-900">
+  <div class="mx-auto max-w-7xl py-12 px-6 lg:flex lg:items-center lg:justify-between lg:py-24 lg:px-8">
+    <h2 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 md:text-4xl">
+      <span class="block">Ready to implement software for your business?</span>
+      <span class="block text-primary">Save <span id="rotating-word" class="inline-block min-w-[120px]">money</span> 
+       growing your business</span>
+    </h2>
+    <div class="mt-8 flex lg:mt-0 lg:shrink-0">
+      <div class="inline-flex rounded-md shadow-2xs">
+        <a href="{% url 'account_signup' %}" class="btn btn-primary">Get started</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const words = {{ project_meta.ROTATING_WORDS|safe }};
+  let currentIndex = 0;
+  const rotatingElement = document.getElementById('rotating-word');
+  
+  if (rotatingElement && words && words.length > 0) {
+    setInterval(function() {
+      // Fade out
+      rotatingElement.style.opacity = '0';
+      rotatingElement.style.transform = 'translateY(-10px)';
+      
+      setTimeout(function() {
+        // Change word
+        currentIndex = (currentIndex + 1) % words.length;
+        rotatingElement.textContent = words[currentIndex];
+        
+        // Fade in
+        rotatingElement.style.opacity = '1';
+        rotatingElement.style.transform = 'translateY(0)';
+      }, 300);
+    }, 2000); // Change word every 2 seconds
+  }
+})();
+</script>
+
+<style>
+#rotating-word {
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  display: inline-block;
+}
+</style>

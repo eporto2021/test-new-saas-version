@@ -1,0 +1,121 @@
+{% load i18n %}
+<div class="navbar shadow-md">
+  <div class="navbar-start">
+    <!-- Sign Out Button (temporary replacement for dropdown) -->
+    {% if user.is_authenticated %}
+      <a href="{% url 'account_logout' %}" class="btn btn-ghost">
+        <i class="fa fa-sign-out-alt"></i>
+        {% translate "Sign Out" %}
+      </a>
+    {% endif %}
+    
+    <!-- Explore Solutions Dropdown (commented out for future use) -->
+    <!-- <div class="dropdown">
+      <label tabindex="0" class="btn btn-ghost normal-case text-base">
+        {% translate "Explore Solutions" %}
+        <svg class="fill-current ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+        </svg>
+      </label>
+      <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow-lg bg-base-100 rounded-box w-64 z-50">
+        <li class="menu-title"><span>{% translate "Our Solutions" %}</span></li>
+        
+        <li>
+          <a href="{% url 'ecommerce:ecommerce_home' %}">
+            <i class="fa-solid fa-shopping-cart"></i>
+            {% translate "Email Marketing Automation Service" %}
+          </a>
+        </li>
+
+        <li>
+          <a href="{% url 'web:home' %}">
+            <i class="fa fa-building"></i>
+            {% translate "Staff training websites done for you" %}
+          </a>
+        </li>
+
+
+        <li>
+          <a href="{% url 'web:home' %}">
+            <i class="fa fa-mobile"></i>
+            {% translate "Bulk Text Messaging Service" %}
+          </a>
+        </li>
+
+        <li>
+          <a href="{% url 'web:home' %}">
+            <i class="fa fa-cog"></i>
+            {% translate "Payroll Automation" %}
+          </a>
+        </li>
+
+        <li>
+          <a href="{% url 'web:home' %}">
+            <i class="fa fa-laptop"></i>
+            {% translate "Data Cleansing and preparation software" %}
+          </a>
+        </li>
+
+
+        <li>
+          <a href="{% url 'web:home' %}">
+            <i class="fa fa-terminal"></i>
+            {% translate "Stock Take Software" %}
+          </a>
+        </li> -->
+<!-- 
+        {% if user.is_authenticated %}
+          <li class="menu-title"><span>{% translate "My Subscriptions" %}</span></li>
+          {% load subscription_tags %}
+          {% user_active_subscriptions user as subscription_items %}
+          {% for subscription_item in subscription_items %}
+            <li>
+              <a href="{% url 'subscriptions:subscription_service' subscription_item.slug %}">
+                <i class="{{ subscription_item.icon }}"></i>
+                {{ subscription_item.name }}
+              </a>
+            </li>
+          {% endfor %}
+        {% endif %} -->
+      <!-- </ul>
+    </div> -->
+    
+    <!-- Mobile Menu (Hidden on Desktop) -->
+    <div class="dropdown lg:hidden ml-2">
+      <label tabindex="0" class="btn btn-ghost">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
+      </label>
+      <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow-2xs bg-base-100 rounded-box w-52 z-10">
+        {% block mobile_nav %}
+        <li>
+          <a class="{% if request.path == '/' %}active{% endif %} font-bold" href="{% url 'web:home' %}">
+            {{project_meta.NAME}}
+          </a>
+        </li>
+        {% endblock %}
+      </ul>
+    </div>
+  </div>
+  <div class="navbar-center hidden lg:flex">
+    <a class="text-black dark:text-white font-bold text-xl" href="{% url 'web:home' %}">
+      {{project_meta.NAME}}
+    </a>
+  </div>
+  <div class="navbar-end">
+    {% if user.is_authenticated %}
+      <!-- <div role="tablist" class="tabs p-0">
+        <a class="tab {% if '/pegasus' in request.path %}tab-active{% endif %}" href="{% url 'pegasus_examples:examples_home' %}">
+          {% translate "Examples Gallery" %}
+        </a>
+      </div> -->
+    {% else %}
+    <a href="{% url 'account_signup' %}" class="btn btn-primary">
+      {% translate "Sign Up" %}
+    </a>
+    <a href="{% url 'account_login' %}" class="btn btn-outline ml-2">
+      {% translate "Sign In" %}
+    </a>
+    {% endif %}
+    {% include "web/components/dark_mode_selector.html" %}
+  </div>
+</div>

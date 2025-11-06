@@ -1,0 +1,38 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+{% block app %}
+<nav aria-label="breadcrumbs">
+  <ol class="pg-breadcrumbs mb-2">
+    <li class=""><a href="{% url 'ecommerce:ecommerce_home' %}">{% translate "Store" %}</a></li>
+    <li class="pg-breadcrumb-active" aria-current="page">{{ product_config.product.name }}</li>
+  </ol>
+</nav>
+<div class="app-card">
+  <h1 class="pg-title">{{ product_config.product.name }}</h1>
+  <div class="pg-content">
+    <p>
+    {% blocktranslate trimmed with name=product_config.product.name date=purchase.created_at.date %}
+      You have access to {{ name }}! You purchased it on {{ date }}. Thanks for your support!
+    {% endblocktranslate %}
+    </p>
+    {% if not product_config.content %}
+    <p>
+      {% blocktranslate trimmed %}
+      You can use this page to show content that should only be available if someone "owns" the product,
+      for example, a download URL, shipping confirmation page, etc.
+      It won't be accessible to people who haven't purchased the product.
+      {% endblocktranslate %}
+    </p>
+    {% endif %}
+  </div>
+  {% if product_config.content %}
+  <div class="mt-2">
+    <a href="{% url 'ecommerce:download_product_file' product_config.slug %}"
+      class="pg-button-primary">
+      {% translate "Download File" %}
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

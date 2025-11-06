@@ -1,0 +1,39 @@
+{% extends "web/app/app_base.html" %}
+{% load i18n %}
+{% load static %}
+{% block app %}
+<section class="app-card">
+    <div class="pg-columns pg-columns-reversed pg-align-items-center">
+        <div class="pg-column-one-third">
+            <img class="img-fluid" src="{% static 'images/web/rocket-laptop.svg' %}" alt="{% translate "Fly Away!" %}">
+        </div>
+        <div class="pg-column">
+            <h1 class="pg-title">{% translate "You're Signed In!" %}</h1>
+            <h2 class="pg-subtitle">
+                {% translate "This is your application's logged in home page." %}
+            </h2>
+            <p>
+                Welcome, {{ user.get_full_name }} Let's start building and implementing software for you!
+            </p>
+        </div>
+    </div>
+</section>
+<section class="app-card">
+    <div class="pg-content">
+        <!-- <p> Welcome to Eporto, we're excited to have you here and to start implementing software for you! Please email admin@eporto.com.au if you need anything. </p> -->
+         <div class="next-steps">
+            <h3 class="pg-title mb-2">🚀 Next Steps</h3>
+            <ol class="pg-list pg-list-numbered mb-0">
+                <li>
+                    Book a discovery call with us at this link: <a href="https://cal.com/eporto/discovery-call" class="text-primary">https://cal.com/eporto/discovery-call</a> where will will disucss with you your business processes and recommened a software solution for you.
+                </li>
+                <li>
+                    Once you've decided on a subscription, simply click the "request subscription trial" button where we will create software for you and then make it availble for you to trial for 7 days. We will contact you when your software is ready.
+                </li>
+                <li>
+                    Once your software is ready all you need to is subscribe to the service in the Subscriptions tab and your trial will begin.
+                </li>
+         </div>
+    </div>
+</section>
+{% endblock %}

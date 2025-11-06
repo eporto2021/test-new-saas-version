@@ -1,0 +1,10 @@
+{% load i18n %}
+{% for subscription_item in subscription_items %}
+<li>
+  <a href="{% url 'subscriptions:subscription_service' subscription_item.slug %}" 
+     {% if active_tab == 'subscription-'|add:subscription_item.slug %}class="menu-active"{% endif %}>
+    <i class="{{ subscription_item.icon }} h-4 w-4"></i>
+    {{ subscription_item.name }}
+  </a>
+</li>
+{% endfor %}
