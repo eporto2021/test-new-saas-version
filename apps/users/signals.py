@@ -1,6 +1,8 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.files.storage import default_storage
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from django.conf import settings
 import os
 import logging
@@ -8,6 +10,48 @@ import logging
 from .models import CustomUser
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=CustomUser)
+def send_welcome_email(sender, instance, created, **kwargs):
+    """
+    Send a welcome email to new users after they sign up.
+    """
+    if created and instance.email:
+        try:
+            # Get the project name from settings
+            project_name = settings.PROJECT_METADATA.get('NAME', 'Eporto')
+            
+            # Email subject
+            subject = f"Welcome to {project_name}!"
+            
+            # Plain text message
+            message = f"""
+Hi {instance.first_name or 'there'},
+
+Welcome to {project_name}! We're excited to have you on board.
+
+Your account has been created successfully. You can now log in and start using our services.
+
+If you have any questions or need assistance, feel free to reach out to our support team at {settings.PROJECT_METADATA.get('CONTACT_EMAIL', 'support@eporto.com')}.
+
+Best regards,
+The {project_name} Team
+            """.strip()
+            
+            # Send the email
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[instance.email],
+                fail_silently=False,
+            )
+            
+            logger.info(f"Welcome email sent to user {instance.id} ({instance.email})")
+            
+        except Exception as e:
+            logger.error(f"Failed to send welcome email to user {instance.id}: {str(e)}")
 
 
 @receiver(post_save, sender=CustomUser)

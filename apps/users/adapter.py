@@ -19,25 +19,8 @@ class EmailAsUsernameAdapter(DefaultAccountAdapter):
         # override the username population to always use the email
         user_field(user, app_settings.USER_MODEL_USERNAME_FIELD, user_email(user))
     
-    def send_mail(self, template_prefix, email, context):
-        """
-        Override to prevent email sending during signup, but allow other emails.
-        
-        Blocks:
-        - account/email/email_confirmation (signup confirmation emails)
-        
-        Allows:
-        - account/email/login_code (passwordless login codes)
-        - account/email/password_reset (password reset emails)
-        - All other emails
-        """
-        # Block only signup confirmation emails
-        if template_prefix == 'account/email/email_confirmation':
-            # Do nothing - prevent signup confirmation emails
-            return
-        
-        # Allow all other emails (login codes, password resets, etc.)
-        super().send_mail(template_prefix, email, context)
+    # NOTE: Email sending is now enabled for all templates
+    # If you want to block specific emails, override send_mail() here
 
 
 class NoNewUsersAccountAdapter(DefaultAccountAdapter):
