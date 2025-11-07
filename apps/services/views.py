@@ -141,12 +141,40 @@ def generic_service_view(request, service_slug):
         data_file__service=service
     ).order_by('-created_at')[:5]  # Show last 5 processed files
     
+    # Get user's custom template if it exists
+    from django.conf import settings
+    from pathlib import Path
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    user_template_path = None
+    
+    # Priority 1: Check if user has a user-specific template
+    user_specific_template = settings.USER_PROGRAMS_DIR / f"user_{request.user.id}" / service.name / "template.html"
+    logger.info(f"Looking for user-specific template at: {user_specific_template}")
+    
+    if user_specific_template.exists():
+        user_template_path = f"user_{request.user.id}/{service.name}/template.html"
+        logger.info(f"Found user-specific template: {user_template_path}")
+    else:
+        # Priority 2: Check for service-level template (shared across all users)
+        service_level_template = settings.USER_PROGRAMS_DIR / service.name / "template.html"
+        logger.info(f"Looking for service-level template at: {service_level_template}")
+        
+        if service_level_template.exists():
+            user_template_path = f"{service.name}/template.html"
+            logger.info(f"Found service-level template: {user_template_path}")
+        else:
+            logger.info("No custom template found, will use default")
+    
     context = {
         'service': service,
         'active_tab': f'service-{service_slug}',
         'form': form,
         'user_data_files': user_data_files,
         'processed_data': processed_data,
+        'service_slug': service_slug,
+        'user_template_path': user_template_path,
     }
     
     return render(request, 'services/service_with_data.html', context)
