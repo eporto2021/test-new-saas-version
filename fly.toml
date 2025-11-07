@@ -22,9 +22,7 @@ kill_timeout = '5s'
   PORT = '8080'
 
 [processes]
-  app = 'gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 8 --timeout 0 test.asgi:application -k uvicorn.workers.UvicornWorker'
-  beat = 'celery -A test beat -l INFO'
-  worker = 'celery -A test worker -l INFO --pool gevent --concurrency 20'
+  app = '/code/start_all.sh'
 
 [http_service]
   internal_port = 8080
@@ -49,4 +47,7 @@ kill_timeout = '5s'
   memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
-  processes = ['worker', 'app']
+
+[mounts]
+  source = 'data'
+  destination = '/data'

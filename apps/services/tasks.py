@@ -71,17 +71,31 @@ def process_data_file(data_file):
     Basic data processing logic. In Phase 2, this would be replaced with
     user-specific logic from their GitHub repository.
     """
-    file_path = data_file.file.path
+    # Check if file exists in storage before trying to process
+    if not data_file.file:
+        raise ValueError(f"No file associated with UserDataFile id={data_file.id}")
+    
+    if not default_storage.exists(data_file.file.name):
+        raise FileNotFoundError(f"File not found in storage: {data_file.file.name} (file_id={data_file.id})")
+    
     file_type = data_file.file_type.lower()
+    
+    # Create a temporary file to work with (compatible with any storage backend)
+    suffix = Path(data_file.original_filename).suffix or f'.{file_type}'
+    with tempfile.NamedTemporaryFile(mode='wb', suffix=suffix, delete=False) as tmp_file:
+        temp_path = tmp_file.name
+        # Copy file content from storage
+        with data_file.file.open('rb') as source:
+            tmp_file.write(source.read())
     
     try:
         # Read the file based on type
         if file_type == 'csv':
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(temp_path)
         elif file_type in ['xlsx', 'xls']:
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(temp_path)
         elif file_type == 'json':
-            with open(file_path, 'r') as f:
+            with open(temp_path, 'r') as f:
                 json_data = json.load(f)
             # Convert JSON to DataFrame (assuming it's a list of records)
             if isinstance(json_data, list):
@@ -90,7 +104,7 @@ def process_data_file(data_file):
                 df = pd.json_normalize(json_data)
         else:
             # For txt files, try to read as CSV
-            df = pd.read_csv(file_path, sep='\t')
+            df = pd.read_csv(temp_path, sep='\t')
         
         # Basic data cleansing (placeholder for user-specific logic)
         original_rows = len(df)
@@ -118,22 +132,28 @@ def process_data_file(data_file):
         }
         
         # Save processed data
-        with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{file_type}', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{file_type}', delete=False) as tmp_out:
+            output_path = tmp_out.name
+        
+        try:
             if file_type == 'csv':
-                df.to_csv(tmp_file.name, index=False)
+                df.to_csv(output_path, index=False)
             elif file_type in ['xlsx', 'xls']:
-                df.to_excel(tmp_file.name, index=False)
+                df.to_excel(output_path, index=False)
             elif file_type == 'json':
-                df.to_json(tmp_file.name, orient='records', indent=2)
+                df.to_json(output_path, orient='records', indent=2)
             else:
-                df.to_csv(tmp_file.name, index=False, sep='\t')
+                df.to_csv(output_path, index=False, sep='\t')
             
             # Read the processed file and save to storage
-            with open(tmp_file.name, 'rb') as f:
+            with open(output_path, 'rb') as f:
                 processed_content = f.read()
-            
-            # Clean up temp file
-            os.unlink(tmp_file.name)
+        finally:
+            # Clean up output temp file
+            try:
+                os.unlink(output_path)
+            except Exception:
+                pass
         
         # Create a file name for the processed data
         processed_filename = f"processed_{data_file.original_filename}"
@@ -144,6 +164,12 @@ def process_data_file(data_file):
     except Exception as e:
         logger.error(f"Error in process_data_file: {str(e)}")
         raise e
+    finally:
+        # Clean up input temp file
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass
 
 
 def _load_user_processed_module(user_id: int, service_name: str):
@@ -153,7 +179,8 @@ def _load_user_processed_module(user_id: int, service_name: str):
     try:
         from django.conf import settings
         # Build absolute path to user program processed_file.py (service_name directory may contain spaces)
-        module_path: Path = settings.BASE_DIR / "user_programs" / f"user_{user_id}" / service_name / "processed_file.py"
+        # Uses USER_PROGRAMS_DIR which automatically switches between development_programs and production_programs
+        module_path: Path = settings.USER_PROGRAMS_DIR / f"user_{user_id}" / service_name / "processed_file.py"
         if not module_path.exists():
             logger.warning(f"processed_file.py not found at: {module_path}")
             return None
@@ -194,37 +221,92 @@ def _call_user_batch_processor(module, data_files_queryset):
         process_customer_data = getattr(module, "process_customer_data")
         write_to_excel = getattr(module, "write_to_excel")
 
-        # Build list of file paths from queryset
-        file_paths = [df.file.path for df in data_files_queryset]
-
-        processed_dfs = process_customer_data(file_paths)
-
-        # Write to temp excel
-        with tempfile.NamedTemporaryFile(mode='wb', suffix='.xlsx', delete=False) as tmp_file:
-            output_path = tmp_file.name
-
-        final_path = write_to_excel(processed_dfs, output_path)
-
-        # Read file content and wrap as ContentFile
-        with open(final_path, 'rb') as f:
-            content = f.read()
-
-        # Best-effort cleanup
+        # Build list of temporary file paths from queryset
+        # Copy files to temp location for processing (works with any storage backend)
+        temp_files = []
+        file_paths = []
         try:
-            os.unlink(final_path)
-        except Exception:
-            pass
+            for df in data_files_queryset:
+                # Check if file exists before trying to process it
+                try:
+                    if not df.file:
+                        logger.warning(f"File {df.id} has no associated file, skipping")
+                        continue
+                    
+                    # Verify file exists in storage
+                    if not default_storage.exists(df.file.name):
+                        logger.error(f"File not found in storage: {df.file.name} (file_id={df.id})")
+                        raise FileNotFoundError(f"File not found in storage: {df.file.name}")
+                    
+                    # Create temp file with original extension
+                    suffix = Path(df.original_filename).suffix or '.dat'
+                    temp_file = tempfile.NamedTemporaryFile(mode='wb', suffix=suffix, delete=False)
+                    
+                    # Copy file content from storage to temp file
+                    with df.file.open('rb') as source:
+                        temp_file.write(source.read())
+                    temp_file.close()
+                    
+                    temp_files.append(temp_file.name)
+                    file_paths.append(temp_file.name)
+                    
+                except Exception as e:
+                    logger.error(f"Error preparing file {df.id} ({df.original_filename}): {e}")
+                    # Clean up any temp files created so far
+                    for temp_file in temp_files:
+                        try:
+                            os.unlink(temp_file)
+                        except Exception:
+                            pass
+                    raise RuntimeError(f"Failed to prepare file {df.original_filename}: {e}")
+            
+            # Check if we have any files to process
+            if not file_paths:
+                raise RuntimeError("No valid files found to process")
 
-        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"processed_batch_{timestamp}.xlsx"
-        processed_file_cf = ContentFile(content, name=filename)
+            processed_dfs = process_customer_data(file_paths)
 
-        # Minimal summary
-        summary = {
-            "files_processed": int(len(file_paths)),
-            "processing_timestamp": timezone.now().isoformat(),
-        }
-        return processed_file_cf, summary
+            # Write to temp excel
+            with tempfile.NamedTemporaryFile(mode='wb', suffix='.xlsx', delete=False) as tmp_file:
+                output_path = tmp_file.name
+
+            final_path = write_to_excel(processed_dfs, output_path)
+
+            # Read file content and wrap as ContentFile
+            with open(final_path, 'rb') as f:
+                content = f.read()
+
+            # Clean up temp files
+            try:
+                os.unlink(final_path)
+            except Exception:
+                pass
+            
+            for temp_file in temp_files:
+                try:
+                    os.unlink(temp_file)
+                except Exception:
+                    pass
+
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"processed_batch_{timestamp}.xlsx"
+            processed_file_cf = ContentFile(content, name=filename)
+
+            # Minimal summary
+            summary = {
+                "files_processed": int(len(file_paths)),
+                "processing_timestamp": timezone.now().isoformat(),
+            }
+            return processed_file_cf, summary
+        
+        except Exception as e:
+            # Clean up temp files on error
+            for temp_file in temp_files:
+                try:
+                    os.unlink(temp_file)
+                except Exception:
+                    pass
+            raise e
 
     raise RuntimeError("No suitable batch processor found in user module")
 
@@ -240,6 +322,19 @@ def process_all_user_files(user_id: int, service_slug: str):
         if not all_files.exists():
             logger.info(f"No files to process for user={user_id}, service={service_slug}")
             return "No files to process"
+
+        # Check for missing files before processing
+        missing_files = []
+        for df in all_files:
+            if df.file and not default_storage.exists(df.file.name):
+                missing_files.append(f"{df.original_filename} (id={df.id}, path={df.file.name})")
+        
+        if missing_files:
+            error_msg = f"Cannot process files - {len(missing_files)} file(s) missing from storage: {', '.join(missing_files[:3])}"
+            if len(missing_files) > 3:
+                error_msg += f" and {len(missing_files) - 3} more"
+            logger.error(f"Missing files for user={user_id}, service={service_slug}: {missing_files}")
+            raise FileNotFoundError(error_msg)
 
         # Load user-specific module by service name (directory name matches Service.name)
         module = _load_user_processed_module(user_id=user_id, service_name=service.name)
@@ -270,6 +365,19 @@ def process_all_user_files(user_id: int, service_slug: str):
         logger.info(f"Batch processed {all_files.count()} files for user={user_id}, service={service_slug}")
         return f"Batch processed {all_files.count()} file(s)"
 
+    except FileNotFoundError as e:
+        # Special handling for missing files
+        logger.error(f"Missing files for user={user_id}, service={service_slug}: {e}")
+        try:
+            service = Service.objects.get(slug=service_slug)
+            pending_files = UserDataFile.objects.filter(user_id=user_id, service=service, processing_status__in=['pending','processing'])
+            for df in pending_files:
+                df.processing_status = 'failed'
+                df.processing_log = f"File not found in storage. Please re-upload your file. Error: {e}"
+                df.save(update_fields=["processing_status", "processing_log"])
+        except Exception:
+            pass
+        return f"Error: {e}"
     except Exception as e:
         logger.error(f"Error in batch processing for user={user_id}, service={service_slug}: {e}")
         # Attempt to mark files as failed

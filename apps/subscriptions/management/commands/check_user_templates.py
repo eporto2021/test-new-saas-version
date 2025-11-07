@@ -28,9 +28,11 @@ class Command(BaseCommand):
         # Show BASE_DIR
         self.stdout.write(f"BASE_DIR: {settings.BASE_DIR}")
         
-        # Show user_programs directory
-        user_programs_dir = settings.BASE_DIR / "user_programs"
-        self.stdout.write(f"\nuser_programs directory: {user_programs_dir}")
+        # Show user_programs directory (uses environment-specific path)
+        user_programs_dir = settings.USER_PROGRAMS_DIR
+        env_name = "PRODUCTION" if settings.STRIPE_LIVE_MODE else "DEVELOPMENT"
+        self.stdout.write(f"\nEnvironment: {env_name}")
+        self.stdout.write(f"USER_PROGRAMS_DIR: {user_programs_dir}")
         self.stdout.write(f"Exists: {user_programs_dir.exists()}\n")
         
         # List all user directories

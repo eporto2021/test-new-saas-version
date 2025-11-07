@@ -299,8 +299,9 @@ def get_user_template_path(user, product_name):
     
     logger = logging.getLogger(__name__)
     
-    # Use absolute path from BASE_DIR to check if file exists
-    user_template_path = settings.BASE_DIR / "user_programs" / f"user_{user.id}" / product_name / "template.html"
+    # Use absolute path from USER_PROGRAMS_DIR to check if file exists
+    # USER_PROGRAMS_DIR automatically uses development_programs or production_programs based on environment
+    user_template_path = settings.USER_PROGRAMS_DIR / f"user_{user.id}" / product_name / "template.html"
     
     logger.info(f"Looking for user template at: {user_template_path}")
     logger.info(f"User ID: {user.id}, Product name: '{product_name}'")
@@ -308,8 +309,7 @@ def get_user_template_path(user, product_name):
     
     # Check if the user-specific template exists
     if user_template_path.exists():
-        # Return path RELATIVE to user_programs/ directory (which is in TEMPLATES['DIRS'])
-        # Don't include 'user_programs/' prefix since it's already in DIRS
+        # Return path RELATIVE to USER_PROGRAMS_DIR (which is in TEMPLATES['DIRS'])
         template_path = f"user_{user.id}/{product_name}/template.html"
         logger.info(f"Returning template path: {template_path}")
         return template_path
@@ -327,8 +327,8 @@ def get_user_cloud_function_url(user, product_name):
     from pathlib import Path
     from django.conf import settings
     
-    # Use absolute path from BASE_DIR
-    cf_url_path = settings.BASE_DIR / "user_programs" / f"user_{user.id}" / product_name / "cloud_function_url.txt"
+    # Use absolute path from USER_PROGRAMS_DIR (automatically uses dev or prod based on environment)
+    cf_url_path = settings.USER_PROGRAMS_DIR / f"user_{user.id}" / product_name / "cloud_function_url.txt"
     
     try:
         if cf_url_path.exists():
@@ -343,15 +343,21 @@ def get_user_cloud_function_url(user, product_name):
 def get_user_upload_directory(user, product_name):
     """
     Get the directory path where user's uploads should be stored.
+    Uses environment-specific user programs directory (development_programs or production_programs).
     """
-    return f"user_programs/user_{user.id}/{product_name}/uploads/"
+    from django.conf import settings
+    env_folder = "production_programs" if settings.STRIPE_LIVE_MODE else "development_programs"
+    return f"user_programs/{env_folder}/user_{user.id}/{product_name}/uploads/"
 
 
 def get_user_processed_directory(user, product_name):
     """
     Get the directory path where user's processed files should be stored.
+    Uses environment-specific user programs directory (development_programs or production_programs).
     """
-    return f"user_programs/user_{user.id}/{product_name}/processed/"
+    from django.conf import settings
+    env_folder = "production_programs" if settings.STRIPE_LIVE_MODE else "development_programs"
+    return f"user_programs/{env_folder}/user_{user.id}/{product_name}/processed/"
 
 
 @login_required

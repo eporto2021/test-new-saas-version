@@ -58,4 +58,15 @@ urlpatterns = [
     # hijack urls for impersonation
     path("hijack/", include("hijack.urls", namespace="hijack")),
     path("chat/", include("apps.chat.urls")),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# Serve media files in all environments
+# Note: In production, consider using a CDN or object storage (S3) for better performance
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # Serve media files even in production (for Fly.io with local volume)
+    from django.views.static import serve
+    urlpatterns += [
+        path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

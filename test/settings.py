@@ -21,6 +21,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 env.read_env(os.path.join(BASE_DIR, ".env"))
 
+# Determine user programs directory based on environment (read early for use in TEMPLATES)
+STRIPE_LIVE_MODE = env.bool("STRIPE_LIVE_MODE", False)
+if STRIPE_LIVE_MODE:
+    USER_PROGRAMS_DIR = BASE_DIR / "user_programs" / "production_programs"
+else:
+    USER_PROGRAMS_DIR = BASE_DIR / "user_programs" / "development_programs"
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/stable/howto/deployment/checklist/
 
@@ -154,7 +161,7 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
             BASE_DIR / "templates",
-            BASE_DIR / "user_programs",
+            USER_PROGRAMS_DIR,  # Automatically uses development_programs or production_programs
         ],
         "OPTIONS": {
             "context_processors": [
@@ -504,8 +511,7 @@ STRIPE_LIVE_PUBLIC_KEY = env("STRIPE_LIVE_PUBLIC_KEY", default="pk_live_***")
 STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY", default="sk_live_***")
 STRIPE_TEST_PUBLIC_KEY = env("STRIPE_TEST_PUBLIC_KEY", default="pk_test_***")
 STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY", default="sk_test_***")
-# Change to True in production
-STRIPE_LIVE_MODE = env.bool("STRIPE_LIVE_MODE", False)
+# STRIPE_LIVE_MODE is set earlier in the file (line ~25) and used to determine USER_PROGRAMS_DIR
 
 # djstripe settings
 

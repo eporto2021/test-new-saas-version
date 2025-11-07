@@ -86,3 +86,14 @@ ACTIVE_ECOMMERCE_PRODUCT_IDS = [
     # Add your LIVE one-time purchase product IDs here
     # Example: 'prod_LIVE_ECOMMERCE_ID',
 ]
+
+# Media files (uploads) storage
+# Use /data volume mounted by Fly.io for persistent storage
+import os
+
+# Override MEDIA_ROOT to use persistent volume (must be string, not Path)
+MEDIA_ROOT = '/data/media'
+# Keep MEDIA_URL consistent with base settings
+MEDIA_URL = '/media/'
+# Ensure the media directory exists
+os.makedirs(MEDIA_ROOT, exist_ok=True)
