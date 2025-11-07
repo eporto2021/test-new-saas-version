@@ -247,10 +247,7 @@ ACCOUNT_FORMS = {
     "signup": "apps.users.forms.TermsSignupForm",
 }
 
-if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-else:
-    EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"  # or your production choice
+# EMAIL_BACKEND is configured later in the file (see line ~351) with automatic MailerSend detection
 
 # User signup configuration: change to "mandatory" to require users to confirm email before signing in.
 # or "optional" to send confirmation emails but not require them
@@ -348,19 +345,31 @@ FORMS_URLFIELD_ASSUME_HTTPS = True
 SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@localhost:8000")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="maxdavenport96@gmail.com")
 
-# The default value will print emails to the console, but you can change that here
-# and in your environment.
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-
-# Most production backends will require further customization. The below example uses MailerSend.
-# ANYMAIL = {
-#     "MAILERSEND_API_KEY": env("MAILERSEND_API_KEY", default=None),
-#     "MAILERSEND_API_URL": env("MAILERSEND_API_URL", default="https://api.mailersend.com/v1"),
-# }
-
-# use in production
-# see https://github.com/anymail/django-anymail for more details/examples
-# EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
+# Email backend configuration
+# Automatically uses MailerSend if MAILERSEND_API_KEY is available, otherwise uses console backend
+mailersend_api_key = env("MAILERSEND_API_KEY", default=None)
+if mailersend_api_key and mailersend_api_key.strip():
+    try:
+        EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
+        ANYMAIL = {
+            "MAILERSEND_API_TOKEN": mailersend_api_key,
+            "MAILERSEND_API_URL": env("MAILERSEND_API_URL", default="https://api.mailersend.com/v1"),
+        }
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("MailerSend email backend configured")
+    except Exception as e:
+        # Fallback to console if MailerSend configuration fails
+        EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"MailerSend configuration failed: {e}, falling back to console email backend")
+else:
+    # Fallback to console backend if MailerSend is not configured
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("MAILERSEND_API_KEY not set, using console email backend (emails will be printed to logs)")
 
 EMAIL_SUBJECT_PREFIX = "[test] "
 
@@ -627,10 +636,7 @@ LOGGING = {
 ACTIVE_PRODUCTS = [
     'prod_T9FO1AD2u8s2xX',
     'prod_T9G51eeTkn3ttj',
-    'prod_T9FPSDcT4R6Ehr',
-    'prod_TMOxLctPXHGeUr',
-    'prod_T3ys3097fCjBPl'
-
+    'prod_T9FPSDcT4R6Ehr'
     # Add your Stripe TEST product IDs for recurring subscriptions here
     # Example: 'prod_TEST_SUBSCRIPTION_ID',
 ]

@@ -17,10 +17,14 @@ class Command(BaseCommand):
     help = 'Validate that all ACTIVE_PRODUCTS exist in the database'
 
     def handle(self, *args, **options):
-        # Get ACTIVE_PRODUCTS from settings (production) or metadata.py (development)
+        # Get ACTIVE_PRODUCTS from settings (production/development) or metadata.py (fallback)
         if hasattr(settings, 'ACTIVE_PRODUCTS'):
             active_products = settings.ACTIVE_PRODUCTS
-            source = 'settings_production.py'
+            # Determine the source based on whether we're in production mode
+            if settings.STRIPE_LIVE_MODE:
+                source = 'settings_production.py'
+            else:
+                source = 'settings.py'
         else:
             from apps.subscriptions.metadata import ACTIVE_PRODUCTS
             active_products = ACTIVE_PRODUCTS

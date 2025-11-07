@@ -21,10 +21,23 @@ class EmailAsUsernameAdapter(DefaultAccountAdapter):
     
     def send_mail(self, template_prefix, email, context):
         """
-        Override to prevent any email sending during signup.
+        Override to prevent email sending during signup, but allow other emails.
+        
+        Blocks:
+        - account/email/email_confirmation (signup confirmation emails)
+        
+        Allows:
+        - account/email/login_code (passwordless login codes)
+        - account/email/password_reset (password reset emails)
+        - All other emails
         """
-        # Do nothing - prevent all email sending
-        pass
+        # Block only signup confirmation emails
+        if template_prefix == 'account/email/email_confirmation':
+            # Do nothing - prevent signup confirmation emails
+            return
+        
+        # Allow all other emails (login codes, password resets, etc.)
+        super().send_mail(template_prefix, email, context)
 
 
 class NoNewUsersAccountAdapter(DefaultAccountAdapter):

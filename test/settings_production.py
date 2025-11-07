@@ -38,6 +38,7 @@ ALLOWED_HOSTS = ["test-blue-smoke-97.fly.dev",'localhost']
 mailersend_api_key = env("MAILERSEND_API_KEY", default=None)
 if mailersend_api_key and mailersend_api_key.strip():
     try:
+        print("MailerSend API key is set, configuring email backend")
         EMAIL_BACKEND = "anymail.backends.mailersend.EmailBackend"
         ANYMAIL = {
             "MAILERSEND_API_TOKEN": mailersend_api_key,
