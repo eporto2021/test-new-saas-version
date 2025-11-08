@@ -38,32 +38,35 @@ class ProductMetadata:
         features = []
         
         # First try to get from marketing_features field (Stripe's built-in field)
+        # Since djstripe Product model doesn't store marketing_features, fetch from API
         if hasattr(stripe_product, 'marketing_features') and stripe_product.marketing_features:
             features = [feature.name for feature in stripe_product.marketing_features if hasattr(feature, 'name')]
+        else:
+            # Fetch marketing_features directly from Stripe API
+            try:
+                from apps.subscriptions.helpers import get_stripe_module
+                stripe = get_stripe_module()
+                stripe_api_product = stripe.Product.retrieve(stripe_product.id)
+                if hasattr(stripe_api_product, 'marketing_features') and stripe_api_product.marketing_features:
+                    features = [feature['name'] for feature in stripe_api_product.marketing_features]
+            except Exception:
+                # If API fetch fails, continue to fallback methods
+                pass
         
-        # Fallback to metadata fields
-        elif stripe_product.metadata and 'features' in stripe_product.metadata:
+        # Fallback to metadata fields if still no features
+        if not features and stripe_product.metadata and 'features' in stripe_product.metadata:
             # Features stored as JSON string in Stripe metadata
             try:
-                import json
                 features = json.loads(stripe_product.metadata['features'])
             except (json.JSONDecodeError, TypeError):
                 # Fallback: treat as comma-separated string
                 features = stripe_product.metadata['features'].split(',')
-        elif stripe_product.metadata and 'marketing_features' in stripe_product.metadata:
+        elif not features and stripe_product.metadata and 'marketing_features' in stripe_product.metadata:
             # Alternative field name in metadata
             try:
-                import json
                 features = json.loads(stripe_product.metadata['marketing_features'])
             except (json.JSONDecodeError, TypeError):
                 features = stripe_product.metadata['marketing_features'].split(',')
-        else:
-            # Default features if none specified
-            features = [
-                # 'Full access to all features',
-                # 'Priority support', 
-                # '24/7 availability'
-            ]
         
         # Clean up features (remove extra whitespace)
         features = [f.strip() for f in features if f.strip()]
