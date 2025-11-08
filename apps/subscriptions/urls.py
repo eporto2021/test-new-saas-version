@@ -15,6 +15,7 @@ urlpatterns = [
     path("service/<str:service_slug>/", views.subscription_service, name="subscription_service"),
     # subscription request
     path("request/<str:product_id>/", views.request_subscription, name="request_subscription"),
+    path("request-demo/<str:product_id>/", views.request_demo, name="request_demo"),
     # stripe checkout views
     path("checkout-canceled/", views.checkout_canceled, name="checkout_canceled"),
     # stripe integration views that return redirects to Stripe

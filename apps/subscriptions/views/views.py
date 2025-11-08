@@ -366,9 +366,36 @@ def request_subscription(request, product_id):
     """
     Handle subscription request from user.
     Creates a request record and emails admins.
+    Prevents duplicate requests for the same product.
     """
     try:
         product = get_object_or_404(Product, id=product_id)
+        
+        # Check if user already has a subscription request for this product
+        existing_request = SubscriptionRequest.objects.filter(
+            user=request.user,
+            product_stripe_id=product.id,
+            request_type='subscription'
+        ).first()
+        
+        if existing_request:
+            # User already has a request for this product
+            if existing_request.status == 'approved':
+                messages.info(
+                    request,
+                    _("Your subscription request for {product} has already been approved! You should see the Subscribe button.").format(product=product.name)
+                )
+            elif existing_request.status in ['pending', 'contacted']:
+                messages.info(
+                    request,
+                    _("You have already submitted a subscription request for {product}. We'll contact you shortly!").format(product=product.name)
+                )
+            else:  # rejected
+                messages.warning(
+                    request,
+                    _("Your previous subscription request for {product} was not approved. Please contact support for more information.").format(product=product.name)
+                )
+            return HttpResponseRedirect(reverse('ecommerce:ecommerce_home'))
         
         # Create subscription request
         subscription_request = SubscriptionRequest.objects.create(
@@ -409,6 +436,90 @@ View in admin: {request.build_absolute_uri(reverse('admin:subscriptions_subscrip
         
     except Exception as e:
         log.error(f"Error creating subscription request: {str(e)}")
+        messages.error(
+            request,
+            _("There was an error submitting your request. Please try again or contact support.")
+        )
+        return HttpResponseRedirect(reverse('ecommerce:ecommerce_home'))
+
+
+@login_required
+def request_demo(request, product_id):
+    """
+    Handle demo request from user.
+    Creates a request record and emails admins.
+    Prevents duplicate requests for the same product.
+    """
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        
+        # Check if user already has a demo request for this product
+        existing_request = SubscriptionRequest.objects.filter(
+            user=request.user,
+            product_stripe_id=product.id,
+            request_type='demo'
+        ).first()
+        
+        if existing_request:
+            # User already has a request for this product
+            if existing_request.status == 'approved':
+                messages.info(
+                    request,
+                    _("Your demo request for {product} has already been approved! Check your email for details.").format(product=product.name)
+                )
+            elif existing_request.status in ['pending', 'contacted']:
+                messages.info(
+                    request,
+                    _("You have already submitted a demo request for {product}. We'll contact you shortly!").format(product=product.name)
+                )
+            else:  # rejected
+                messages.warning(
+                    request,
+                    _("Your previous demo request for {product} was not approved. Please contact support for more information.").format(product=product.name)
+                )
+            return HttpResponseRedirect(reverse('ecommerce:ecommerce_home'))
+        
+        # Create demo request
+        demo_request = SubscriptionRequest.objects.create(
+            user=request.user,
+            product_name=product.name,
+            product_stripe_id=product.id,
+            request_type='demo',
+            message=request.POST.get('message', ''),
+            status='pending'
+        )
+        
+        # Send email to admins
+        subject = f"New Demo Request: {product.name}"
+        message = f"""
+User: {request.user.email}
+Name: {request.user.get_full_name()}
+Product: {product.name}
+Product ID: {product.id}
+Request Type: Demo
+Request Date: {demo_request.created_at.strftime('%Y-%m-%d %H:%M:%S')}
+
+Message from user:
+{demo_request.message or 'No message provided'}
+
+View in admin: {request.build_absolute_uri(reverse('admin:subscriptions_subscriptionrequest_change', args=[demo_request.id]))}
+        """
+        
+        mail_admins(
+            subject=subject,
+            message=message,
+            fail_silently=True,
+        )
+        
+        messages.success(
+            request,
+            _("Your demo request has been submitted! We'll contact you shortly to schedule a demo.")
+        )
+        
+        return HttpResponseRedirect(reverse('ecommerce:ecommerce_home'))
+        
+    except Exception as e:
+        log.error(f"Error creating demo request: {str(e)}")
         messages.error(
             request,
             _("There was an error submitting your request. Please try again or contact support.")

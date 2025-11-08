@@ -15,6 +15,11 @@ class SubscriptionRequest(models.Model):
     """
     Tracks user requests for subscription trials/demos.
     """
+    REQUEST_TYPE_CHOICES = [
+        ('subscription', _('Subscription Request')),
+        ('demo', _('Demo Request')),
+    ]
+    
     STATUS_CHOICES = [
         ('pending', _('Pending')),
         ('contacted', _('Contacted')),
@@ -29,19 +34,30 @@ class SubscriptionRequest(models.Model):
     )
     product_name = models.CharField(max_length=255)
     product_stripe_id = models.CharField(max_length=255)
+    request_type = models.CharField(
+        max_length=20, 
+        choices=REQUEST_TYPE_CHOICES, 
+        default='subscription',
+        help_text=_("Type of request - subscription or demo")
+    )
     message = models.TextField(blank=True, help_text=_("Optional message from user"))
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    demo_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text=_("Demo link to send to user when request is approved (for demo requests)")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     admin_notes = models.TextField(blank=True, help_text=_("Internal notes"))
     
     class Meta:
         ordering = ['-created_at']
-        verbose_name = _("Subscription Request")
-        verbose_name_plural = _("Subscription Requests")
+        verbose_name = _("Subscription and Demo Request")
+        verbose_name_plural = _("Subscription and Demo Requests")
     
     def __str__(self):
-        return f"{self.user.email} - {self.product_name} ({self.status})"
+        return f"{self.user.email} - {self.product_name} ({self.get_request_type_display()}) - {self.status}"
 
 
 class SubscriptionAvailability(models.Model):

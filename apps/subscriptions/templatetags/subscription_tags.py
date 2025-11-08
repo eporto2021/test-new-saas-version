@@ -71,7 +71,56 @@ def user_has_requested_subscription(user, product_id):
     
     return SubscriptionRequest.objects.filter(
         user=user,
-        product_stripe_id=product_id
+        product_stripe_id=product_id,
+        request_type='subscription'
+    ).exists()
+
+
+@register.simple_tag
+def user_has_requested_demo(user, product_id):
+    """
+    Check if user has a pending/contacted demo request for a specific product.
+    This excludes approved requests (which show the demo button instead).
+    
+    Args:
+        user: The user to check
+        product_id: The Stripe product ID to check for
+        
+    Returns:
+        bool: True if user has a pending/contacted demo request, False otherwise
+    """
+    if not user.is_authenticated:
+        return False
+    
+    return SubscriptionRequest.objects.filter(
+        user=user,
+        product_stripe_id=product_id,
+        request_type='demo',
+        status__in=['pending', 'contacted']  # Exclude approved and rejected
+    ).exists()
+
+
+@register.simple_tag
+def user_has_approved_demo(user, product_id):
+    """
+    Check if user has an approved demo request for a specific product.
+    This is used to determine whether to show the demo link to the user.
+    
+    Args:
+        user: The user to check
+        product_id: The Stripe product ID to check for
+        
+    Returns:
+        bool: True if user has an approved demo for this product, False otherwise
+    """
+    if not user.is_authenticated:
+        return False
+    
+    return SubscriptionRequest.objects.filter(
+        user=user,
+        product_stripe_id=product_id,
+        request_type='demo',
+        status='approved'
     ).exists()
 
 

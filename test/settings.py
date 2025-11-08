@@ -486,6 +486,7 @@ PROJECT_METADATA = {
     "IMAGE": "https://upload.wikimedia.org/wikipedia/commons/2/20/PEO-pegasus_black.svg",
     "KEYWORDS": "SaaS, django",
     "CONTACT_EMAIL": "maxdavenport96@gmail.com",
+    "CALENDLY_LINK": "https://calendly.com/your-booking-link",  # Update with your actual Calendly link
     "ROTATING_WORDS": ["money", "time", "headaches", "resources", "effort", "stress"],
 }
 
@@ -642,7 +643,8 @@ LOGGING = {
 ACTIVE_PRODUCTS = [
     'prod_T9FO1AD2u8s2xX',
     'prod_T9G51eeTkn3ttj',
-    'prod_T9FPSDcT4R6Ehr'
+    'prod_T9FPSDcT4R6Ehr',
+    'prod_TNThI3oPkK1NtB'
     # Add your Stripe TEST product IDs for recurring subscriptions here
     # Example: 'prod_TEST_SUBSCRIPTION_ID',
 ]

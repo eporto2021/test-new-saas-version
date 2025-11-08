@@ -49,25 +49,40 @@
         </div>
         
         <div class="card-footer" style="padding: 1rem 1.5rem 1.5rem 1.5rem; border-top: 1px solid #f3f4f6;">
-          <!-- Demo Link Button -->
-          {% if demo_links %}
-            {% with demo_link=demo_links|get_item:product.product.id %}
-              {% if demo_link %}
-                <a href="{{ demo_link.demo_url }}" 
-                   {% if demo_link.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}
-                   style="display: block; width: 100%; padding: 0.75rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 600; text-decoration: none; margin-bottom: 0.75rem; transition: background-color 0.2s ease;"
-                   onmouseover="this.style.backgroundColor='#4f46e5'" 
-                   onmouseout="this.style.backgroundColor='#6366f1'">
-                  <i class="fa fa-play-circle" style="margin-right: 0.5rem;"></i>
-                  {{ demo_link.button_text }}
-                </a>
-              {% endif %}
-            {% endwith %}
-          {% endif %}
-          
           <!-- Check subscription availability and request status -->
           {% is_subscription_available_for_purchase product.product.id user as is_available_for_purchase %}
           {% user_has_requested_subscription user product.product.id as has_requested %}
+          {% user_has_requested_demo user product.product.id as has_requested_demo %}
+          {% user_has_approved_demo user product.product.id as has_approved_demo %}
+          
+          <!-- Demo Link Button - Only show if user has approved demo -->
+          {% if has_approved_demo %}
+            {% with demo_link=demo_links|get_item:product.product.id %}
+              {% with demo_url_from_request=approved_demo_urls|get_item:product.product.id %}
+                {% if demo_link %}
+                  {# Use ProductDemoLink if available #}
+                  <a href="{{ demo_link.demo_url }}" 
+                     {% if demo_link.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}
+                     style="display: block; width: 100%; padding: 0.75rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 600; text-decoration: none; margin-bottom: 0.75rem; transition: background-color 0.2s ease;"
+                     onmouseover="this.style.backgroundColor='#4f46e5'" 
+                     onmouseout="this.style.backgroundColor='#6366f1'">
+                    <i class="fa fa-play-circle" style="margin-right: 0.5rem;"></i>
+                    {{ demo_link.button_text }}
+                  </a>
+                {% elif demo_url_from_request %}
+                  {# Use demo URL from approved SubscriptionRequest #}
+                  <a href="{{ demo_url_from_request }}" 
+                     target="_blank" rel="noopener noreferrer"
+                     style="display: block; width: 100%; padding: 0.75rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 600; text-decoration: none; margin-bottom: 0.75rem; transition: background-color 0.2s ease;"
+                     onmouseover="this.style.backgroundColor='#4f46e5'" 
+                     onmouseout="this.style.backgroundColor='#6366f1'">
+                    <i class="fa fa-play-circle" style="margin-right: 0.5rem;"></i>
+                    {% translate "View Demo" %}
+                  </a>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          {% endif %}
           
           {% if is_available_for_purchase %}
             <!-- Subscription is available for direct purchase - show subscribe buttons -->
@@ -95,7 +110,7 @@
               {% endif %}
             {% endwith %}
           {% elif has_requested %}
-            <!-- User has requested but subscription not yet available for purchase -->
+            <!-- User has requested subscription but not yet available for purchase -->
             <div style="margin-bottom: 0.75rem; padding: 0.75rem 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; text-align: center;">
               <div style="color: #0c4a6e; font-weight: 600; margin-bottom: 0.25rem;">
                 <i class="fa fa-check-circle" style="margin-right: 0.5rem; color: #10b981;"></i>
@@ -117,6 +132,34 @@
                 {% translate "Request Subscription" %}
               </button>
             </form>
+          {% endif %}
+          
+          <!-- Demo Request Button - Only show if demo not approved -->
+          {% if not has_approved_demo %}
+            {% if has_requested_demo %}
+              <!-- User has already requested a demo (pending/contacted) -->
+              <div style="padding: 0.75rem 1rem; background: #eff6ff; border: 1px solid #3b82f6; border-radius: 6px; text-align: center;">
+                <div style="color: #1e3a8a; font-weight: 600; margin-bottom: 0.25rem;">
+                  <i class="fa fa-check-circle" style="margin-right: 0.5rem; color: #3b82f6;"></i>
+                  {% translate "Demo Request Submitted" %}
+                </div>
+                <div style="color: #1e40af; font-size: 0.875rem; line-height: 1.4;">
+                  {% translate "We'll contact you shortly to schedule your demo." %}
+                </div>
+              </div>
+            {% else %}
+              <!-- Show Request Demo button -->
+              <form action="{% url 'subscriptions:request_demo' product.product.id %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" 
+                        style="display: block; width: 100%; padding: 0.75rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 600; cursor: pointer; transition: background-color 0.2s ease;"
+                        onmouseover="this.style.backgroundColor='#2563eb'" 
+                        onmouseout="this.style.backgroundColor='#3b82f6'">
+                  <i class="fa fa-video" style="margin-right: 0.5rem;"></i>
+                  {% translate "Request Demo" %}
+                </button>
+              </form>
+            {% endif %}
           {% endif %}
         </div>
       </div>

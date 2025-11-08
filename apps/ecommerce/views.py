@@ -35,8 +35,8 @@ def ecommerce_home(request):
     # Always get subscription products for display
     subscription_products = list(get_active_products_with_metadata())
     
-    # Get demo links for subscription products
-    from apps.subscriptions.models import ProductDemoLink
+    # Get demo links for subscription products from ProductDemoLink
+    from apps.subscriptions.models import ProductDemoLink, SubscriptionRequest
     demo_links = {}
     for product in subscription_products:
         try:
@@ -47,6 +47,17 @@ def ecommerce_home(request):
             demo_links[product.product.id] = demo_link
         except ProductDemoLink.DoesNotExist:
             pass
+    
+    # Get approved demo requests for the current user (to use demo_url from request)
+    approved_demo_urls = {}
+    if request.user.is_authenticated:
+        approved_demos = SubscriptionRequest.objects.filter(
+            user=request.user,
+            request_type='demo',
+            status='approved'
+        ).exclude(demo_url='')
+        for demo in approved_demos:
+            approved_demo_urls[demo.product_stripe_id] = demo.demo_url
 
     return TemplateResponse(
         request,
@@ -56,6 +67,7 @@ def ecommerce_home(request):
             "products": products,
             "subscription_products": subscription_products,
             "demo_links": demo_links,
+            "approved_demo_urls": approved_demo_urls,
         },
     )
 

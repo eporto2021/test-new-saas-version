@@ -6,8 +6,8 @@ from apps.users.models import CustomUser
 
 @admin.register(SubscriptionRequest)
 class SubscriptionRequestAdmin(admin.ModelAdmin):
-    list_display = ['user_info', 'product_name', 'status_display', 'created_at', 'view_user_link']
-    list_filter = ['status', 'created_at', 'user__is_staff', 'user__is_superuser']
+    list_display = ['user_info', 'product_name', 'request_type_display', 'status_display', 'created_at', 'view_user_link']
+    list_filter = ['status', 'request_type', 'created_at', 'user__is_staff', 'user__is_superuser']
     search_fields = ['user__email', 'user__first_name', 'user__last_name', 'product_name', 'product_stripe_id']
     readonly_fields = ['created_at', 'updated_at', 'product_info']
     date_hierarchy = 'created_at'
@@ -15,8 +15,12 @@ class SubscriptionRequestAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Request Information', {
-            'fields': ('user', 'product_name', 'product_stripe_id', 'message', 'status'),
-            'description': 'When status is set to "Approved", the user will see a "Subscribe" button for this product.'
+            'fields': ('user', 'product_name', 'product_stripe_id', 'request_type', 'message', 'status'),
+            'description': 'For subscription requests: approval enables the Subscribe button. For demo requests: approval sends an email and shows the demo link to the user.'
+        }),
+        ('Demo Settings', {
+            'fields': ('demo_url',),
+            'description': 'Enter the demo URL to include in the approval email. This is only used for demo requests.'
         }),
         ('Admin Notes', {
             'fields': ('admin_notes',),
@@ -40,6 +44,15 @@ class SubscriptionRequestAdmin(admin.ModelAdmin):
         return obj.user.email
     user_info.short_description = 'User'
     user_info.admin_order_field = 'user__email'
+    
+    def request_type_display(self, obj):
+        """Display request type with icons"""
+        if obj.request_type == 'demo':
+            return format_html('<span style="color: #6366f1; font-weight: bold;">🎬 Demo</span>')
+        else:
+            return format_html('<span style="color: #10b981; font-weight: bold;">📦 Subscription</span>')
+    request_type_display.short_description = 'Type'
+    request_type_display.admin_order_field = 'request_type'
     
     def status_display(self, obj):
         """Display status with colored indicators"""
@@ -99,7 +112,7 @@ class SubscriptionRequestAdmin(admin.ModelAdmin):
         return 'Product information will appear after saving.'
     product_info.short_description = 'Product Details'
     
-    actions = ['mark_contacted', 'mark_approved', 'mark_rejected', 'approve_and_enable_subscription']
+    actions = ['mark_contacted', 'mark_approved', 'mark_rejected', 'approve_subscription_requests', 'approve_demo_requests']
     
     def mark_contacted(self, request, queryset):
         updated = queryset.update(status='contacted')
@@ -107,42 +120,69 @@ class SubscriptionRequestAdmin(admin.ModelAdmin):
     mark_contacted.short_description = '📞 Mark as contacted'
     
     def mark_approved(self, request, queryset):
+        """Approve all types of requests - handles both subscription and demo"""
         updated_count = 0
-        for subscription_request in queryset:
-            # Update the request status
+        demo_count = 0
+        subscription_count = 0
+        
+        for req in queryset:
+            # Update the request status - this triggers the signal
+            req.status = 'approved'
+            req.save()
+            updated_count += 1
+            
+            if req.request_type == 'demo':
+                demo_count += 1
+            else:
+                subscription_count += 1
+        
+        message_parts = [f'{updated_count} request(s) approved.']
+        if subscription_count > 0:
+            message_parts.append(f'{subscription_count} subscription(s) enabled.')
+        if demo_count > 0:
+            message_parts.append(f'{demo_count} demo approval email(s) sent.')
+        
+        self.message_user(request, ' '.join(message_parts))
+    mark_approved.short_description = '✅ Approve all requests'
+    
+    def approve_subscription_requests(self, request, queryset):
+        """Approve only subscription requests"""
+        subscription_requests = queryset.filter(request_type='subscription')
+        updated_count = 0
+        
+        for subscription_request in subscription_requests:
+            # Update the request status - signal will handle creating availability
             subscription_request.status = 'approved'
             subscription_request.save()
-            
-            # Create or update SubscriptionAvailability to enable subscription
-            from djstripe.models import Product
-            try:
-                product = Product.objects.get(id=subscription_request.product_stripe_id)
-                SubscriptionAvailability.objects.update_or_create(
-                    stripe_product=product,
-                    user=subscription_request.user,
-                    defaults={'make_subscription_available': True}
-                )
-                updated_count += 1
-            except Product.DoesNotExist:
-                self.message_user(
-                    request, 
-                    f'Warning: Product {subscription_request.product_stripe_id} not found in Stripe for request {subscription_request.id}',
-                    level='warning'
-                )
+            updated_count += 1
         
-        self.message_user(request, f'{updated_count} requests approved and subscription enabled! Users can now see the Subscribe button.')
-    mark_approved.short_description = '✅ Approve requests (enable subscription)'
+        if updated_count == 0:
+            self.message_user(request, 'No subscription requests found in selection.', level='warning')
+        else:
+            self.message_user(request, f'{updated_count} subscription request(s) approved. Users can now subscribe!')
+    approve_subscription_requests.short_description = '📦 Approve subscription requests'
+    
+    def approve_demo_requests(self, request, queryset):
+        """Approve only demo requests and send notification emails"""
+        demo_requests = queryset.filter(request_type='demo')
+        updated_count = 0
+        
+        for demo_request in demo_requests:
+            # Update the request status - signal will send the email
+            demo_request.status = 'approved'
+            demo_request.save()
+            updated_count += 1
+        
+        if updated_count == 0:
+            self.message_user(request, 'No demo requests found in selection.', level='warning')
+        else:
+            self.message_user(request, f'{updated_count} demo request(s) approved. Notification emails sent to users!')
+    approve_demo_requests.short_description = '🎬 Approve demo requests'
     
     def mark_rejected(self, request, queryset):
         updated = queryset.update(status='rejected')
         self.message_user(request, f'{updated} requests marked as rejected.')
     mark_rejected.short_description = '❌ Reject requests'
-    
-    def approve_and_enable_subscription(self, request, queryset):
-        """Special action that approves requests and provides additional info"""
-        # Use the same logic as mark_approved
-        self.mark_approved(request, queryset)
-    approve_and_enable_subscription.short_description = '🚀 Approve & Enable Subscription'
 
 
 @admin.register(SubscriptionAvailability)
