@@ -34,6 +34,19 @@ def ecommerce_home(request):
 
     # Always get subscription products for display
     subscription_products = list(get_active_products_with_metadata())
+    
+    # Get demo links for subscription products
+    from apps.subscriptions.models import ProductDemoLink
+    demo_links = {}
+    for product in subscription_products:
+        try:
+            demo_link = ProductDemoLink.objects.get(
+                stripe_product_id=product.product.id,
+                is_active=True
+            )
+            demo_links[product.product.id] = demo_link
+        except ProductDemoLink.DoesNotExist:
+            pass
 
     return TemplateResponse(
         request,
@@ -42,6 +55,7 @@ def ecommerce_home(request):
             "active_tab": "ecommerce",
             "products": products,
             "subscription_products": subscription_products,
+            "demo_links": demo_links,
         },
     )
 

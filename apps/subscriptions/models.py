@@ -80,6 +80,53 @@ class SubscriptionAvailability(models.Model):
         return f"{self.stripe_product.name} - {status}{user_info}"
 
 
+class ProductDemoLink(models.Model):
+    """
+    Stores demo links for subscription products to display on product cards.
+    """
+    
+    product_name = models.CharField(
+        max_length=255,
+        help_text=_("Name of the subscription product")
+    )
+    stripe_product_id = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text=_("Stripe Product ID (e.g., prod_T9FO1AD2u8s2xX)")
+    )
+    demo_url = models.URLField(
+        max_length=500,
+        help_text=_("URL to the demo page or video")
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text=_("Show/hide the demo link on product card")
+    )
+    button_text = models.CharField(
+        max_length=50,
+        default="View Demo",
+        help_text=_("Text to display on the demo button")
+    )
+    open_in_new_tab = models.BooleanField(
+        default=True,
+        help_text=_("Open demo link in a new browser tab")
+    )
+    display_order = models.IntegerField(
+        default=0,
+        help_text=_("Display order (lower numbers appear first)")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _("Product Demo Link")
+        verbose_name_plural = _("Product Demo Links")
+        ordering = ['display_order', 'product_name']
+    
+    def __str__(self):
+        return f"{self.product_name} - {self.button_text}"
+
+
 class SubscriptionModelBase(models.Model):
     """
     Helper class to be used with Stripe Subscriptions.

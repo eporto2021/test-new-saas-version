@@ -79,10 +79,18 @@ ACTIVE_PRODUCTS = [
     'prod_TH8G6pq4cSCVBc', # Role Based Staff Training Website
     'prod_SoHjyWHk63DnzD', # Check each booking is on the run sheet as a drop off
     'prod_TMPLzH7z6lE74v', # Estimated Time of Arrival bulk SMS program
+    "prod_TNThXAlmAozeyW",#Upselling Email Marketing Program
+    "prod_TNUZgVBcfIqidu", # Payment Reconcilitation Tools
+    "prod_TNV44n6jFm7A7i", # Email marketing based isochrone tool
+     "prod_TNVBuRgRPcYnu6", # Draft Run Sheet Creator    
+     "prod_TNVDInXXh9dkuq", # Isochrone based SMS Marketing
+     "prod_TNVEyCKTVZJvaN" # Isochrone based mail out
+
 ]
 
 # Ecommerce products (one-time purchases) - LIVE product IDs
 ACTIVE_ECOMMERCE_PRODUCT_IDS = [
+    # "prod_TNToqVqVVBmJax",
     # Add your LIVE one-time purchase product IDs here
     # Example: 'prod_LIVE_ECOMMERCE_ID',
 ]

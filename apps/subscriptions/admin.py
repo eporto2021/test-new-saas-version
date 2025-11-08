@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import SubscriptionRequest, SubscriptionAvailability
+from .models import SubscriptionRequest, SubscriptionAvailability, ProductDemoLink
 from apps.users.models import CustomUser
 
 
@@ -259,3 +259,82 @@ class SubscriptionAvailabilityAdmin(admin.ModelAdmin):
         
         self.message_user(request, f'Created {created_count} user-specific availability records.')
     create_for_all_users.short_description = 'Create user-specific records for all users'
+
+
+@admin.register(ProductDemoLink)
+class ProductDemoLinkAdmin(admin.ModelAdmin):
+    list_display = ['product_name', 'stripe_product_id', 'demo_link_display', 'is_active', 'button_text', 'display_order', 'updated_at']
+    list_filter = ['is_active', 'open_in_new_tab', 'created_at']
+    search_fields = ['product_name', 'stripe_product_id', 'demo_url', 'button_text']
+    readonly_fields = ['created_at', 'updated_at', 'preview_link']
+    ordering = ['display_order', 'product_name']
+    
+    fieldsets = (
+        ('Product Information', {
+            'fields': ('product_name', 'stripe_product_id'),
+            'description': 'Enter the product name and Stripe Product ID (e.g., prod_T9FO1AD2u8s2xX)'
+        }),
+        ('Demo Link Settings', {
+            'fields': ('demo_url', 'button_text', 'open_in_new_tab', 'is_active'),
+            'description': 'Configure the demo link button that appears on the product card'
+        }),
+        ('Display Settings', {
+            'fields': ('display_order', 'preview_link'),
+            'description': 'Control the display order and preview the link'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def demo_link_display(self, obj):
+        """Display the demo URL as a clickable link"""
+        if obj.demo_url:
+            target = '_blank' if obj.open_in_new_tab else '_self'
+            return format_html(
+                '<a href="{}" target="{}" style="color: #3b82f6;">🔗 {}</a>',
+                obj.demo_url, target, obj.demo_url[:50] + '...' if len(obj.demo_url) > 50 else obj.demo_url
+            )
+        return '-'
+    demo_link_display.short_description = 'Demo URL'
+    
+    def preview_link(self, obj):
+        """Preview how the button will appear"""
+        if obj.pk:
+            active_badge = '✅ Active' if obj.is_active else '⚠️ Inactive'
+            target_badge = '🔗 New Tab' if obj.open_in_new_tab else '🔗 Same Tab'
+            return format_html(
+                '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">'
+                '<div style="margin-bottom: 10px;">'
+                '<span style="background: {}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px;">{}</span>'
+                '<span style="background: #6366f1; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">{}</span>'
+                '</div>'
+                '<strong>Button Preview:</strong><br>'
+                '<a href="{}" target="{}" '
+                'style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #3b82f6; color: white; '
+                'text-decoration: none; border-radius: 6px; font-weight: 600; cursor: pointer;">'
+                '{}'
+                '</a>'
+                '</div>',
+                '#10b981' if obj.is_active else '#f59e0b',
+                active_badge,
+                target_badge,
+                obj.demo_url,
+                '_blank' if obj.open_in_new_tab else '_self',
+                obj.button_text
+            )
+        return 'Preview will appear after saving.'
+    preview_link.short_description = 'Button Preview'
+    
+    actions = ['activate_demos', 'deactivate_demos']
+    
+    def activate_demos(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f'{updated} demo link(s) activated.')
+    activate_demos.short_description = '✅ Activate selected demo links'
+    
+    def deactivate_demos(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f'{updated} demo link(s) deactivated.')
+    deactivate_demos.short_description = '⚠️ Deactivate selected demo links'
