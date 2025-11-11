@@ -18,21 +18,519 @@
         </div>
     </div>
 </section>
+
+{% if show_software_survey %}
+<section class="app-card" id="software-survey-section">
+    <div class="pg-content">
+        <h3 class="pg-title mb-3">🛠️ What software do you use?</h3>
+        <p class="mb-4">
+            Help us understand your business better by selecting the software tools you currently use. 
+            This will help us create better integrations and automations for you.
+        </p>
+        
+        <form method="post" action="{% url 'web:submit_software_survey' %}" id="software-survey-form">
+            {% csrf_token %}
+            
+            <!-- Search Box -->
+            <div class="mb-4">
+                <div class="search-box-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input 
+                        type="text" 
+                        id="software-search" 
+                        class="form-control search-input" 
+                        placeholder="Search for software (e.g., Excel, Salesforce, Xero)..."
+                        autocomplete="off"
+                    >
+                    <button type="button" class="search-clear" id="clear-search" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <small class="text-muted d-block mt-2" id="search-results-count"></small>
+            </div>
+            
+            <div class="software-grid mb-4" id="software-grid">
+                {% for software in software_list %}
+                <label class="software-card" data-name="{{ software.name|lower }}" data-category="{{ software.category|lower }}">
+                    <input type="checkbox" name="software" value="{{ software.id }}" class="software-checkbox">
+                    <div class="software-card-content">
+                        <i class="fas {{ software.icon }} software-icon"></i>
+                        <span class="software-name">{{ software.name }}</span>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            
+            <div id="no-results-message" style="display: none;" class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                No software found matching your search. You can add it in the "Other Software" section below.
+            </div>
+            
+            <!-- Custom Software Input -->
+            <div class="custom-software-section">
+                <div class="custom-software-header">
+                    <i class="fas fa-plus-circle"></i>
+                    <span class="custom-software-title">Other Software Not Listed</span>
+                </div>
+                <p class="custom-software-description">
+                    Can't find what you're looking for? Add any other software tools you use below.
+                </p>
+                <textarea 
+                    name="custom_software" 
+                    id="custom_software" 
+                    class="form-control custom-software-input" 
+                    rows="4" 
+                    placeholder="e.g., MyCustomCRM, Internal Logistics Tool, ProprietaryApp&#10;&#10;Separate multiple entries with commas or new lines."
+                ></textarea>
+                <div class="custom-software-hint">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>This helps us understand your full technology stack and create better integrations.</span>
+                </div>
+            </div>
+            
+            <div class="survey-actions">
+                <button type="submit" class="btn btn-primary btn-lg survey-submit-btn">
+                    <i class="fas fa-check me-2"></i>Submit My Software
+                </button>
+                <button type="button" class="btn btn-link text-muted survey-skip-btn" onclick="skipSurvey()">
+                    Skip for now
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<style>
+/* Search Box Styles */
+.search-box-wrapper {
+    position: relative;
+    max-width: 600px;
+}
+
+.search-input {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    outline: none;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    pointer-events: none;
+}
+
+.search-clear {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.search-clear:hover {
+    color: #333;
+}
+
+/* Custom Software Section */
+.custom-software-section {
+    background: #f8f9fa;
+    border: 2px dashed #d0d0d0;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+.custom-software-section:hover {
+    border-color: #4a90e2;
+    background: #f0f7ff;
+}
+
+.custom-software-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.custom-software-header i {
+    font-size: 1.5rem;
+    color: #4a90e2;
+}
+
+.custom-software-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.custom-software-description {
+    color: #666;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.custom-software-input {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    resize: vertical;
+    min-height: 100px;
+    width: 100%;
+    max-width: 100%;
+}
+
+.custom-software-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.15);
+    outline: none;
+    background: #ffffff;
+}
+
+.custom-software-input::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.custom-software-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #666;
+    line-height: 1.5;
+}
+
+.custom-software-hint i {
+    color: #ffc107;
+    margin-top: 0.125rem;
+    flex-shrink: 0;
+}
+
+/* Survey Actions */
+.survey-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.survey-submit-btn {
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    box-shadow: 0 2px 4px rgba(74, 144, 226, 0.2);
+    transition: all 0.2s ease;
+}
+
+.survey-submit-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
+}
+
+.survey-skip-btn {
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    transition: color 0.2s ease;
+}
+
+.survey-skip-btn:hover {
+    color: #333 !important;
+    text-decoration: underline;
+}
+
+/* Software Grid Styles */
+.software-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    transition: opacity 0.2s ease;
+}
+
+.software-card {
+    cursor: pointer;
+    display: block;
+    position: relative;
+    margin: 0;
+    transition: all 0.2s ease;
+}
+
+.software-card.hidden {
+    display: none;
+}
+
+.software-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    transition: all 0.2s ease;
+    min-height: 120px;
+}
+
+.software-card:hover .software-card-content {
+    border-color: #4a90e2;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.2);
+    transform: translateY(-2px);
+}
+
+.software-checkbox {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.software-checkbox:checked + .software-card-content {
+    border-color: #4a90e2;
+    background: #e8f4fd;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.software-checkbox:checked + .software-card-content .software-icon {
+    color: #4a90e2;
+}
+
+.software-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: #666;
+    transition: color 0.2s ease;
+}
+
+.software-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    color: #333;
+}
+
+@media (max-width: 768px) {
+    .software-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    
+    .software-card-content {
+        padding: 1rem 0.5rem;
+        min-height: 100px;
+    }
+    
+    .software-icon {
+        font-size: 2rem;
+    }
+    
+    .software-name {
+        font-size: 0.8rem;
+    }
+    
+    /* Custom Software Section Mobile */
+    .custom-software-section {
+        padding: 1.25rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .custom-software-header {
+        gap: 0.5rem;
+    }
+    
+    .custom-software-header i {
+        font-size: 1.25rem;
+    }
+    
+    .custom-software-title {
+        font-size: 1.1rem;
+    }
+    
+    .custom-software-description {
+        font-size: 0.9rem;
+    }
+    
+    .custom-software-input {
+        font-size: 0.9rem;
+        padding: 0.875rem;
+    }
+    
+    .custom-software-hint {
+        font-size: 0.8rem;
+        padding: 0.625rem;
+    }
+    
+    /* Survey Actions Mobile */
+    .survey-actions {
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+    }
+    
+    .survey-submit-btn {
+        width: 100%;
+        padding: 0.875rem 1.5rem;
+    }
+    
+    .survey-skip-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+function skipSurvey() {
+    if (confirm('Are you sure you want to skip? You can always update your preferences later.')) {
+        // Submit the form without any selections
+        document.getElementById('software-survey-form').submit();
+    }
+}
+
+// Search functionality
+(function() {
+    const searchInput = document.getElementById('software-search');
+    const clearButton = document.getElementById('clear-search');
+    const softwareCards = document.querySelectorAll('.software-card');
+    const noResultsMessage = document.getElementById('no-results-message');
+    const resultsCount = document.getElementById('search-results-count');
+    const totalCards = softwareCards.length;
+    
+    function performSearch() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+        
+        // Show/hide clear button
+        clearButton.style.display = searchTerm ? 'block' : 'none';
+        
+        if (!searchTerm) {
+            // Show all cards when search is empty
+            softwareCards.forEach(card => {
+                card.classList.remove('hidden');
+            });
+            noResultsMessage.style.display = 'none';
+            resultsCount.textContent = '';
+            return;
+        }
+        
+        // Filter cards based on search term
+        softwareCards.forEach(card => {
+            const name = card.getAttribute('data-name');
+            const category = card.getAttribute('data-category');
+            
+            if (name.includes(searchTerm) || category.includes(searchTerm)) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+        
+        // Show/hide no results message
+        if (visibleCount === 0) {
+            noResultsMessage.style.display = 'block';
+            resultsCount.textContent = 'No software found';
+        } else {
+            noResultsMessage.style.display = 'none';
+            resultsCount.textContent = `Showing ${visibleCount} of ${totalCards} software tools`;
+        }
+    }
+    
+    // Clear search
+    clearButton.addEventListener('click', function() {
+        searchInput.value = '';
+        performSearch();
+        searchInput.focus();
+    });
+    
+    // Search on input
+    searchInput.addEventListener('input', performSearch);
+    
+    // Allow Enter key to focus first visible card
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstVisible = document.querySelector('.software-card:not(.hidden)');
+            if (firstVisible) {
+                firstVisible.querySelector('.software-checkbox').click();
+            }
+        }
+    });
+})();
+
+// Smooth fade out after submission
+document.getElementById('software-survey-form').addEventListener('submit', function() {
+    const section = document.getElementById('software-survey-section');
+    section.style.transition = 'opacity 0.3s ease';
+    section.style.opacity = '0';
+});
+</script>
+{% endif %}
+
 <section class="app-card">
     <div class="pg-content">
         <!-- <p> Welcome to Eporto, we're excited to have you here and to start implementing software for you! Please email admin@eporto.com.au if you need anything. </p> -->
-         <div class="next-steps">
+         
+        
+        <div class="next-steps">
             <h3 class="pg-title mb-2">🚀 Next Steps</h3>
-            <ol class="pg-list pg-list-numbered mb-0">
-                <li>
-                    Book a discovery call with us at this link: <a href="https://cal.com/eporto/discovery-call" class="text-primary">https://cal.com/eporto/discovery-call</a> where will will disucss with you your business processes and recommened a software solution for you.
-                </li>
-                <li>
+                <div class="next-steps-options mb-4">
+                    <p>
+                        Ready to build your next workflow or automation? You have two ways to get started:
+                    </p>
+                    <ol>
+                        <li>
+                            <strong>Book a Zoom discovery call:</strong>
+                            <br>
+                            Use the booking calendar below to schedule a friendly Zoom chat about your business and app ideas.
+                        </li>
+                        <li class="mt-2">
+                            <strong>Email us your ideas &amp; sample data:</strong>
+                            <br>
+                            Prefer written communication? Send your app ideas and some sample data to 
+                            <a href="mailto:admin@eporto.com.au">admin@eporto.com.au</a>.
+                        </li>
+                    </ol>
+                    <p>
+                        We'll create or refer you to a product demo and estimate the net benefit of using the new program for your business.
+                    </p>
+                </div>
+                <!-- Calendly inline widget begin -->
+                <div class="calendly-inline-widget" data-url="https://calendly.com/eporto/discovery-call" style="min-width:320px;height:700px;"></div>
+                <script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" async></script>
+                <!-- Calendly inline widget end -->
+                <!-- <li>
                     Once you've decided on a subscription, simply click the "request subscription trial" button where we will create software for you and then make it availble for you to trial for 7 days. We will contact you when your software is ready.
                 </li>
                 <li>
                     Once your software is ready all you need to is subscribe to the service in the Subscriptions tab and your trial will begin.
-                </li>
+                </li> -->
          </div>
     </div>
 </section>

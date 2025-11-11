@@ -37,6 +37,9 @@ def ecommerce_home(request):
     
     # Get demo links for subscription products from ProductDemoLink
     from apps.subscriptions.models import ProductDemoLink, SubscriptionRequest
+    from djstripe.models import Subscription
+    from djstripe.enums import SubscriptionStatus
+    
     demo_links = {}
     for product in subscription_products:
         try:
@@ -58,6 +61,27 @@ def ecommerce_home(request):
         ).exclude(demo_url='')
         for demo in approved_demos:
             approved_demo_urls[demo.product_stripe_id] = demo.demo_url
+    
+    # Check if user has subscribed to all available subscription products
+    user_subscribed_to_all = False
+    if request.user.is_authenticated and request.user.customer and subscription_products:
+        # Get user's active subscriptions
+        active_subscriptions = Subscription.objects.filter(
+            customer=request.user.customer,
+            status__in=[SubscriptionStatus.active, SubscriptionStatus.trialing, SubscriptionStatus.past_due]
+        )
+        
+        # Get list of product IDs user has subscriptions for
+        subscribed_product_ids = set()
+        for subscription in active_subscriptions:
+            for item in subscription.items.all():
+                subscribed_product_ids.add(item.price.product.id)
+        
+        # Get list of available subscription product IDs
+        available_product_ids = {product.product.id for product in subscription_products}
+        
+        # Check if user has subscribed to all available products
+        user_subscribed_to_all = available_product_ids.issubset(subscribed_product_ids)
 
     return TemplateResponse(
         request,
@@ -68,6 +92,7 @@ def ecommerce_home(request):
             "subscription_products": subscription_products,
             "demo_links": demo_links,
             "approved_demo_urls": approved_demo_urls,
+            "user_subscribed_to_all": user_subscribed_to_all,
         },
     )
 

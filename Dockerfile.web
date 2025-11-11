@@ -87,6 +87,10 @@ RUN sed -i '1c\#!/usr/bin/env python3' /code/manage.py
 RUN DEBUG=False python /code/manage.py collectstatic --noinput --settings=test.settings_production
 RUN chown django:django -R static_root
 
+# Make virtualenv available in interactive shells (for SSH sessions)
+RUN echo 'export PATH="/code/.venv/bin:$PATH"' >> /etc/bash.bashrc && \
+    echo 'export PATH="/code/.venv/bin:$PATH"' >> /etc/profile
+
 USER django
 
 

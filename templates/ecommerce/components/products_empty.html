@@ -7,6 +7,25 @@
 <p class="mt-2 mb-4">
   {% translate "Choose from our subscription plans to get started:" %}
 </p>
+
+{% if user_subscribed_to_all %}
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); text-align: center;">
+  <div style="color: white; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">
+    <i class="fa fa-check-circle" style="margin-right: 0.75rem;"></i>
+    {% translate "You're subscribed to all plans!" %}
+  </div>
+  <p style="color: rgba(255, 255, 255, 0.9); margin-bottom: 1.5rem; font-size: 1rem;">
+    {% translate "Thank you for being a premium member. Access your subscriptions below." %}
+  </p>
+  <a href="{% url 'subscriptions:subscription_details' %}" 
+     style="display: inline-block; padding: 1rem 2.5rem; background: white; color: #667eea; border: none; border-radius: 8px; font-weight: 700; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 1.1rem;"
+     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';"
+     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.15)';">
+    <i class="fa fa-star" style="margin-right: 0.5rem;"></i>
+    {% translate "View My Subscriptions" %}
+  </a>
+</div>
+{% endif %}
   <div class="subscription-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto;">
     {% for product in subscription_products %}
       {% comment %}Skip products that user has already subscribed to{% endcomment %}

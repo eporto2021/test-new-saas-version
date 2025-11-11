@@ -26,7 +26,7 @@ class Service(models.Model):
     """
     
     name = models.CharField(max_length=100, help_text=_("Display name of the service"))
-    slug = models.SlugField(unique=True, help_text=_("URL-friendly identifier"))
+    slug = models.SlugField(max_length=150, unique=True, help_text=_("URL-friendly identifier"))
     description = models.TextField(blank=True, help_text=_("Description of what this service provides"))
     stripe_product = models.ForeignKey(
         Product, 
@@ -34,7 +34,7 @@ class Service(models.Model):
         help_text=_("The Stripe product that grants access to this service")
     )
     icon = models.CharField(
-        max_length=50, 
+        max_length=200, 
         default="fa-solid fa-cube", 
         help_text=_("Font Awesome icon class for this service")
     )

@@ -642,9 +642,9 @@ LOGGING = {
 # Subscription products (recurring billing)
 ACTIVE_PRODUCTS = [
     'prod_T9FO1AD2u8s2xX',
-    'prod_T9G51eeTkn3ttj',
-    'prod_T9FPSDcT4R6Ehr',
-    'prod_TNThI3oPkK1NtB'
+    #'prod_T9G51eeTkn3ttj', # Role Based Staff Training Website
+    #'prod_T9FPSDcT4R6Ehr', #  Load Sheet PDF Creator with bonus Loading tab creation  
+    # 'prod_TNThI3oPkK1NtB' # Upselling Email Marketing Program
     # Add your Stripe TEST product IDs for recurring subscriptions here
     # Example: 'prod_TEST_SUBSCRIPTION_ID',
 ]
