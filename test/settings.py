@@ -642,6 +642,9 @@ LOGGING = {
 # Subscription products (recurring billing)
 ACTIVE_PRODUCTS = [
     'prod_T9FO1AD2u8s2xX',
+    'prod_TMOpLmL5vnKtCX', # Optimo Route Formatter
+    'prod_T3ys3097fCjBPl',# Check Each Drop off Has A Pick Up
+    'prod_SoHjyWHk63DnzD', # Check each booking is on the run sheet as a drop off
     #'prod_T9G51eeTkn3ttj', # Role Based Staff Training Website
     #'prod_T9FPSDcT4R6Ehr', #  Load Sheet PDF Creator with bonus Loading tab creation  
     # 'prod_TNThI3oPkK1NtB' # Upselling Email Marketing Program

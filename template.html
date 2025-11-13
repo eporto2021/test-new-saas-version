@@ -1,0 +1,428 @@
+{% load i18n %}
+{% load file_filters %}
+
+<div class="mt-6">
+    <h2 class="pg-subtitle">{% translate "Upload & Process Data!" %}</h2>
+    
+    <!-- Success/Error Messages -->
+    <div id="upload-message" class="hidden mb-4"></div>
+    
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+      <form id="upload-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-4">
+          <label for="file-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {% translate "Select data files (up to 10)" %}
+          </label>
+          <input type="file" name="file" id="file-input" 
+                 accept=".csv,.json,.xlsx,.xls,.txt" 
+                 multiple
+                 onchange="checkFileLimit()"
+                 class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600"
+                 required>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {% translate "Supported formats: CSV, JSON, Excel (XLSX/XLS), TXT. Max size: 10MB per file. Up to 10 files allowed." %}
+          </p>
+          <p id="file-error" class="mt-1 text-sm text-red-600 dark:text-red-400 hidden">
+            {% translate "You can only upload up to 10 files." %}
+          </p>
+        </div>
+        
+        <div class="flex gap-8">
+          <button type="submit" id="upload-btn" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fa fa-upload mr-2"></i>
+            <span id="upload-btn-text">{% translate "Upload Files" %}</span>
+          </button>
+          
+          <button type="button" id="process-all-btn" onclick="processAllFiles()" class="pg-button-primary disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="pg-icon"><i class="fa fa-cog"></i></span>
+            <span>{% translate "Process All" %}</span>
+          </button>
+          
+          <button type="button" id="delete-all-btn" onclick="deleteAllFiles()" class="pg-button-danger disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="pg-icon"><i class="fa fa-trash"></i></span>
+            <span>{% translate "Delete All" %}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript for file upload and validation -->
+  <script>
+    function checkFileLimit() {
+      const fileInput = document.getElementById('file-input');
+      const errorMessage = document.getElementById('file-error');
+      if (fileInput.files.length > 10) {
+        errorMessage.classList.remove('hidden');
+        fileInput.value = ''; // Clear the input
+        return false;
+      } else {
+        errorMessage.classList.add('hidden');
+        return true;
+      }
+    }
+
+    function showMessage(message, type) {
+      const messageDiv = document.getElementById('upload-message');
+      messageDiv.className = `mb-4 p-4 rounded-lg ${
+        type === 'success' 
+          ? 'bg-green-100 border border-green-400 text-green-700 dark:bg-green-900 dark:text-green-300' 
+          : 'bg-red-100 border border-red-400 text-red-700 dark:bg-red-900 dark:text-red-300'
+      }`;
+      messageDiv.textContent = message;
+      messageDiv.classList.remove('hidden');
+      
+      // Auto-hide success messages after 5 seconds
+      if (type === 'success') {
+        setTimeout(() => {
+          messageDiv.classList.add('hidden');
+        }, 5000);
+      }
+    }
+
+    function setUploading(isUploading) {
+      const btn = document.getElementById('upload-btn');
+      const btnText = document.getElementById('upload-btn-text');
+      const fileInput = document.getElementById('file-input');
+      
+      if (isUploading) {
+        btn.disabled = true;
+        fileInput.disabled = true;
+        btnText.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>Uploading...';
+      } else {
+        btn.disabled = false;
+        fileInput.disabled = false;
+        btnText.textContent = '{% translate "Upload Files" %}';
+      }
+    }
+
+    // Handle form submission via AJAX
+    document.getElementById('upload-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      if (!checkFileLimit()) {
+        return;
+      }
+      
+      const formData = new FormData(this);
+      const fileInput = document.getElementById('file-input');
+      const files = fileInput.files;
+      
+      // Upload each file
+      setUploading(true);
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (let i = 0; i < files.length; i++) {
+        const singleFileFormData = new FormData();
+        singleFileFormData.append('file', files[i]);
+        singleFileFormData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        try {
+          const response = await fetch('{% url "services:upload_data_file" service_slug=service_slug %}', {
+            method: 'POST',
+            body: singleFileFormData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          console.error('Upload error:', error);
+          errorCount++;
+        }
+      }
+      
+      setUploading(false);
+      
+      // Show result message
+      if (errorCount === 0) {
+        showMessage(`${successCount} file(s) uploaded successfully! Click "Process" to process them.`, 'success');
+      } else {
+        showMessage(`${successCount} file(s) uploaded, ${errorCount} failed.`, 'error');
+      }
+      
+      // Clear the file input
+      fileInput.value = '';
+      
+      // Reload the page to show updated files (after a short delay)
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    });
+
+    // Process a specific file
+    async function processFile(fileId, button) {
+      const originalText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Processing...';
+      
+      try {
+        const response = await fetch('{% url "services:process_data_file" service_slug=service_slug %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          },
+          body: JSON.stringify({ file_id: fileId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage('File processing started!', 'success');
+          // Reload to show updated status
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          showMessage(data.error || 'Failed to process file', 'error');
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
+      } catch (error) {
+        console.error('Processing error:', error);
+        showMessage('Error processing file', 'error');
+        button.disabled = false;
+        button.innerHTML = originalText;
+      }
+    }
+
+    // Delete a file
+    async function deleteFile(fileId, button) {
+      if (!confirm('Are you sure you want to delete this file?')) {
+        return;
+      }
+      
+      const originalText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Deleting...';
+      
+      try {
+        const response = await fetch('{% url "services:delete_data_file" service_slug=service_slug %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          },
+          body: JSON.stringify({ file_id: fileId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage('File deleted successfully!', 'success');
+          // Reload to update the list
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showMessage(data.error || 'Failed to delete file', 'error');
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        showMessage('Error deleting file', 'error');
+        button.disabled = false;
+        button.innerHTML = originalText;
+      }
+    }
+
+    // Process all pending files
+    async function processAllFiles() {
+      const button = document.getElementById('process-all-btn');
+      const originalContent = button.innerHTML;
+      
+      button.disabled = true;
+      button.innerHTML = '<span class="pg-icon"><i class="fa fa-spinner fa-spin"></i></span><span>Processing...</span>';
+      
+      try {
+        const response = await fetch('{% url "services:process_all_files" service_slug=service_slug %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage(`Processing ${data.file_count} file(s)... This may take 30-60 seconds. Page will reload automatically when complete.`, 'success');
+          
+          // Wait longer before reloading to give Celery time to process
+          // Poll every 5 seconds for up to 2 minutes
+          let pollCount = 0;
+          const maxPolls = 24; // 24 polls * 5 seconds = 2 minutes
+          
+          const pollInterval = setInterval(() => {
+            pollCount++;
+            console.log(`Polling for completion... attempt ${pollCount}/${maxPolls}`);
+            
+            if (pollCount >= maxPolls) {
+              clearInterval(pollInterval);
+              showMessage('Processing is taking longer than expected. Reloading page...', 'success');
+              window.location.reload();
+            } else if (pollCount >= 6) {
+              // After 30 seconds, start checking if we should reload
+              // Just reload - the backend will show results when ready
+              clearInterval(pollInterval);
+              window.location.reload();
+            }
+          }, 5000);
+        } else {
+          showMessage(data.error || 'Failed to start processing', 'error');
+          button.disabled = false;
+          button.innerHTML = originalContent;
+        }
+      } catch (error) {
+        console.error('Process all error:', error);
+        showMessage('Error starting batch processing', 'error');
+        button.disabled = false;
+        button.innerHTML = originalContent;
+      }
+    }
+
+    // Delete all uploaded files
+    async function deleteAllFiles() {
+      if (!confirm('Are you sure you want to delete ALL uploaded files? This action cannot be undone.')) {
+        return;
+      }
+      
+      const button = document.getElementById('delete-all-btn');
+      const originalContent = button.innerHTML;
+      
+      button.disabled = true;
+      button.innerHTML = '<span class="pg-icon"><i class="fa fa-spinner fa-spin"></i></span><span>Deleting...</span>';
+      
+      try {
+        const response = await fetch('{% url "services:delete_all_files" service_slug=service_slug %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showMessage(`Successfully deleted ${data.deleted_count} file(s)!`, 'success');
+          // Reload to update the list
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showMessage(data.error || 'Failed to delete files', 'error');
+          button.disabled = false;
+          button.innerHTML = originalContent;
+        }
+      } catch (error) {
+        console.error('Delete all error:', error);
+        showMessage('Error deleting files', 'error');
+        button.disabled = false;
+        button.innerHTML = originalContent;
+      }
+    }
+  </script>
+
+  <!-- Recent Uploads & Processed Data -->
+  {% if user_data_files or processed_data %}
+  <div class="mt-6">
+    <h2 class="pg-subtitle">{% translate "Your Files" %}</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Recent Uploads -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <i class="fa fa-file mr-2"></i>
+          {% translate "Recent Uploads" %} (User {{ user.id }})
+        </h3>
+        
+        {% if user_data_files %}
+          <div class="space-y-3">
+            {% for file in user_data_files %}
+              <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex-1">
+                    <div class="flex items-center">
+                      <i class="fa fa-file-{% if file.file_type == 'csv' %}csv{% elif file.file_type == 'json' %}code{% elif file.file_type in 'xlsx,xls' %}excel{% else %}text{% endif %} mr-2 text-gray-500"></i>
+                      <span class="font-medium text-gray-900 dark:text-white">{{ file.original_filename }}</span>
+                    </div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {{ file.file_size_human }} • {{ file.created_at|date:"M d, Y H:i" }}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        {% if file.processing_status == 'completed' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300
+                        {% elif file.processing_status == 'processing' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300
+                        {% elif file.processing_status == 'failed' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300
+                        {% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                      {{ file.get_processing_status_display }}
+                    </span>
+                    <!-- DEBUG: File {{ file.id }} Status: {{ file.processing_status }} -->
+                    <button onclick="deleteFile({{ file.id }}, this)" 
+                            class="pg-button-danger delete-btn">
+                      <span class="pg-icon"><i class="fa fa-trash"></i></span>
+                      <span>{% translate "Delete" %}</span>
+                    </button>
+                    <!-- DEBUG: End buttons for file {{ file.id }} -->
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-gray-500 dark:text-gray-400">{% translate "No files uploaded yet." %}</p>
+        {% endif %}
+      </div>
+
+      <!-- Processed Data -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <i class="fa fa-download mr-2"></i>
+          {% translate "Processed Files" %}
+        </h3>
+        
+        {% if processed_data %}
+          <div class="space-y-3">
+            {% for data in processed_data %}
+              <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    {{ data.processed_file.name|filename }}
+                  </span>
+                  <span class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ data.created_at|date:"M d, Y" }}
+                  </span>
+                </div>
+                
+                {% if data.summary_data %}
+                  <div class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                    <span class="font-medium">Rows:</span> {{ data.summary_data.processed_rows|default:"N/A" }}
+                  </div>
+                {% endif %}
+                
+                <a href="{{ data.processed_file.url }}" 
+                   class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400" download>
+                  <i class="fa fa-download mr-1"></i>
+                  {% translate "Download" %}
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-gray-500 dark:text-gray-400">{% translate "No processed files yet." %}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
