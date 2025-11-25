@@ -73,9 +73,10 @@ STRIPE_LIVE_MODE = True
 
 # Subscription products (recurring billing) - LIVE product IDs
 ACTIVE_PRODUCTS = [
-    'prod_TMOpLmL5vnKtCX', # Optimo Route Formatter
-    'prod_T3ys3097fCjBPl',# Check Each Drop off Has A Pick Up
-    'prod_SoHjyWHk63DnzD', # Check each booking is on the run sheet as a drop off
+    'prod_TUC2pMpt5evmMY', # Check all bookings have a drop off
+    'prod_T3ys3097fCjBPl', # Check Each Drop off Has A Pick Up
+    #'prod_TMOpLmL5vnKtCX', # Optimo Route Formatter
+    #'prod_SoHjyWHk63DnzD', # Check each booking is on the run sheet as a drop off
     # 'prod_TMOxLctPXHGeUr', # Bulk payment link creator
     # 'prod_TH8G6pq4cSCVBc', # Role Based Staff Training Website
     # 'prod_TMPLzH7z6lE74v', # Estimated Time of Arrival bulk SMS program

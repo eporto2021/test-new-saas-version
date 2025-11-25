@@ -23,7 +23,7 @@
             <th>{% translate "Status" %}</th>
             <th>{% translate "Products" %}</th>
             <th>{% translate "Billing" %}</th>
-            <th>{% translate "Next Payment" %}</th>
+            <th>{% translate "Next Payment / Access" %}</th>
             <th>{% translate "Actions" %}</th>
           </tr>
         </thead>
@@ -48,14 +48,16 @@
               <td>
                 <div class="text-sm">{{ sub.billing_interval|title }}</div>
                 {% if sub.cancel_at_period_end %}
-                  <div class="text-sm text-red-500">{% translate "Cancels" %} {{ sub.current_period_end.date }}</div>
+                  <div class="text-sm text-red-500 font-semibold">{% translate "Access ends on" %} {{ sub.current_period_end.date }}</div>
                 {% endif %}
               </td>
               <td>
-                {% if not sub.cancel_at_period_end %}
-                  <div class="text-sm">{{ sub.current_period_end.date }}</div>
+                {% if sub.cancel_at_period_end %}
+                  <div class="text-sm text-gray-900">{{ sub.current_period_end.date }}</div>
+                  <div class="text-xs text-gray-500">{% translate "No further payments will be charged." %}</div>
                 {% else %}
-                  <div class="text-sm text-gray-500">{% translate "N/A" %}</div>
+                  <div class="text-sm">{{ sub.current_period_end.date }}</div>
+                  <div class="text-xs text-gray-500">{% translate "Renews automatically" %}</div>
                 {% endif %}
               </td>
               <td>

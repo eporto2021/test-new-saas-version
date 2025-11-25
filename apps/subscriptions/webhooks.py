@@ -88,13 +88,38 @@ def update_customer_subscription(event, **kwargs):
 
 
 @djstripe_receiver("customer.subscription.deleted")
-def email_admins_when_subscriptions_canceled(event, **kwargs):
-    # example webhook handler to notify admins when a subscription is deleted/canceled
+def handle_subscription_deleted(event, **kwargs):
+    """
+    Ensure local state (service access + notifications) is updated when Stripe fully cancels a subscription.
+    """
+    subscription_data = event.data["object"]
+    subscription_id = subscription_data["id"]
+    
+    djstripe_subscription = None
     try:
-        customer_email = Customer.objects.get(id=event.data["object"]["customer"]).email
+        djstripe_subscription = Subscription.objects.get(id=subscription_id)
+    except Subscription.DoesNotExist:
+        # Fallback to syncing directly from the webhook payload
+        try:
+            djstripe_subscription = Subscription.sync_from_stripe_data(subscription_data)
+        except Exception as exc:
+            log.error(f"Unable to sync subscription {subscription_id} on delete webhook: {exc}")
+    
+    if djstripe_subscription and djstripe_subscription.customer:
+        from apps.services.helpers import update_user_service_access_from_subscription
+        
+        try:
+            user = CustomUser.objects.get(customer=djstripe_subscription.customer)
+            update_user_service_access_from_subscription(user, djstripe_subscription)
+        except CustomUser.DoesNotExist:
+            log.error(f"User not found for customer {djstripe_subscription.customer.id} during subscription delete")
+    
+    # Notify admins so they still get visibility of the cancellation
+    try:
+        customer_email = Customer.objects.get(id=subscription_data["customer"]).email
     except Customer.DoesNotExist:
         customer_email = "unavailable"
-
+    
     mail_admins(
         "Someone just canceled their subscription!",
         f"Their email was {customer_email}",

@@ -346,6 +346,19 @@ def process_all_user_files(user_id: int, service_slug: str):
 
         processed_file_cf, summary = _call_user_batch_processor(module, all_files)
 
+        # Remove any previous processed reports for this service/user
+        existing_reports = UserProcessedData.objects.filter(
+            data_file__user_id=user_id,
+            data_file__service=service
+        )
+        for report in existing_reports:
+            try:
+                if report.processed_file:
+                    report.processed_file.delete(save=False)
+            except Exception:
+                pass
+            report.delete()
+
         # Anchor the processed output to the most recent file so it shows in the UI
         anchor_file = all_files.first()
         UserProcessedData.objects.create(

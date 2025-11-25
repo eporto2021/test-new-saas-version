@@ -22,5 +22,6 @@ urlpatterns = [
     path('<slug:service_slug>/delete/', views.delete_data_file, name='delete_data_file'),
     path('<slug:service_slug>/process-all/', views.process_all_files, name='process_all_files'),
     path('<slug:service_slug>/delete-all/', views.delete_all_files, name='delete_all_files'),
+    path('<slug:service_slug>/delete-reports/', views.delete_processed_reports, name='delete_processed_reports'),
     path('file/<int:file_id>/status/', views.get_processing_status, name='get_processing_status'),
 ]

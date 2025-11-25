@@ -370,3 +370,35 @@ def delete_all_files(request, service_slug):
         
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_processed_reports(request, service_slug):
+    """
+    Delete all processed (verification) reports for the current user/service.
+    """
+    try:
+        service = get_object_or_404(Service, slug=service_slug, is_active=True)
+        reports = UserProcessedData.objects.filter(
+            data_file__user=request.user,
+            data_file__service=service
+        )
+
+        if not reports.exists():
+            return JsonResponse({'success': False, 'error': 'No reports to delete'}, status=400)
+
+        deleted_count = 0
+        for report in reports:
+            try:
+                if report.processed_file:
+                    report.processed_file.delete(save=False)
+            except Exception:
+                pass
+            report.delete()
+            deleted_count += 1
+
+        return JsonResponse({'success': True, 'message': f'Deleted {deleted_count} report(s).'})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
