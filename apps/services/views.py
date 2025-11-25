@@ -277,7 +277,18 @@ def delete_data_file(request, service_slug):
         # Get the file and verify ownership
         data_file = UserDataFile.objects.get(id=file_id, user=request.user)
         
-        # Delete the file and its processed data
+        # Delete associated processed data first (to ensure storage cleanup)
+        if hasattr(data_file, 'processed_data'):
+            processed = data_file.processed_data
+            if processed.processed_file:
+                processed.processed_file.delete(save=False)
+            processed.delete()
+        
+        # Delete the physical file from storage
+        if data_file.file:
+            data_file.file.delete(save=False)
+        
+        # Delete the database record
         data_file.delete()
         
         return JsonResponse({'success': True, 'message': 'File deleted successfully'})

@@ -639,17 +639,10 @@ LOGGING = {
 # These lists control which products are displayed in the store
 # Override these in settings_production.py for production-specific product IDs
 
-# Subscription products (recurring billing)
+# Subscription products Sandbox mode (recurring billing)
 ACTIVE_PRODUCTS = [
-    'prod_T9FO1AD2u8s2xX',
-    'prod_TMOpLmL5vnKtCX', # Optimo Route Formatter
-    'prod_T3ys3097fCjBPl',# Check Each Drop off Has A Pick Up
-    'prod_SoHjyWHk63DnzD', # Check each booking is on the run sheet as a drop off
-    #'prod_T9G51eeTkn3ttj', # Role Based Staff Training Website
-    #'prod_T9FPSDcT4R6Ehr', #  Load Sheet PDF Creator with bonus Loading tab creation  
-    # 'prod_TNThI3oPkK1NtB' # Upselling Email Marketing Program
-    # Add your Stripe TEST product IDs for recurring subscriptions here
-    # Example: 'prod_TEST_SUBSCRIPTION_ID',
+    'prod_T9FO1AD2u8s2xX',  # Check each drop off has a pick up (ACTIVE)
+    'prod_T9FHtgOwbWmPjB', # Check each booking is on the run sheet as a drop off
 ]
 
 # Ecommerce products (one-time purchases)

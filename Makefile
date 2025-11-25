@@ -64,8 +64,7 @@ dbshell: ## Get a Database shell
 test: ## Run all tests
 	@docker compose run --rm web python manage.py test
 
-init: 
-	setup-env start-bg migrations migrate  ## Quickly get up and running (start containers and bootstrap DB)
+init: setup-env start-bg migrations migrate  ## Quickly get up and running (start containers and bootstrap DB)
 
 uv: ## Run a uv command
 	@docker compose run --rm web uv $(filter-out $@,$(MAKECMDGOALS))
