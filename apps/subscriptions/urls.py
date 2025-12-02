@@ -6,6 +6,8 @@ app_name = "subscriptions"
 
 urlpatterns = [
     path("api/active-products/", views.ProductWithMetadataAPI.as_view(), name="products_api"),
+    path("api/check-access/", views.CheckUserSubscriptionAccess.as_view(), name="check_user_subscription_access"),
+    path("api/user-services/", views.UserServicesList.as_view(), name="user_services_list"),
     path("confirm/", views.subscription_confirm, name="subscription_confirm"),
     path("", views.subscription, name="subscription_details"),
     path("demo/", views.subscription_demo, name="subscription_demo"),

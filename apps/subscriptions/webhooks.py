@@ -106,11 +106,36 @@ def handle_subscription_deleted(event, **kwargs):
             log.error(f"Unable to sync subscription {subscription_id} on delete webhook: {exc}")
     
     if djstripe_subscription and djstripe_subscription.customer:
-        from apps.services.helpers import update_user_service_access_from_subscription
+        from apps.services.helpers import update_user_service_access_from_subscription, revoke_service_access
+        from apps.services.models import Service, UserServiceAccess
+        from django.utils.text import slugify
         
         try:
             user = CustomUser.objects.get(customer=djstripe_subscription.customer)
             update_user_service_access_from_subscription(user, djstripe_subscription)
+            
+            # Explicitly revoke any lingering service access records tied to this subscription's products
+            product_ids = []
+            try:
+                for item in subscription_data.get("items", {}).get("data", []):
+                    price_data = item.get("price") or {}
+                    product_id = price_data.get("product")
+                    if product_id:
+                        product_ids.append(product_id)
+            except Exception:
+                pass
+            
+            if product_ids:
+                UserServiceAccess.objects.filter(
+                    user=user,
+                    service__stripe_product__id__in=product_ids
+                ).delete()
+            else:
+                # Fallback: derive slug from product name if available and revoke by slug
+                product_name = subscription_data.get("items", {}).get("data", [{}])[0].get("plan", {}).get("product")
+                if product_name:
+                    slug = slugify(product_name)
+                    revoke_service_access(user, slug)
         except CustomUser.DoesNotExist:
             log.error(f"User not found for customer {djstripe_subscription.customer.id} during subscription delete")
     
