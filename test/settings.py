@@ -117,6 +117,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "apps.web.middleware.vite.ViteDevServerMiddleware",  # Configure Vite dev server for network access
     "apps.web.middleware.locale.UserLocaleMiddleware",
     "apps.web.middleware.locale.UserTimezoneMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -331,6 +332,8 @@ DJANGO_VITE = {
     "default": {
         "dev_mode": env.bool("DJANGO_VITE_DEV_MODE", default=DEBUG),
         "manifest_path": BASE_DIR / "static" / ".vite" / "manifest.json",
+        # Note: django-vite automatically uses the request host for dev server URLs
+        # This allows network access when Vite server is configured with host: '0.0.0.0'
     }
 }
 

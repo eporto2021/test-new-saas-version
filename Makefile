@@ -16,12 +16,57 @@ start: ## Start the docker containers
 stop: ## Stop Containers
 	@docker compose down
 
-restart: stop migrate sync start ## Restart Containers with migrations and Stripe sync
+show-network-address: ## Show the local network address for accessing the app
+	@echo ""
+	@echo "🌐 Local Network Access:"
+	@echo "========================"
+	@LOCAL_IP=$$(ipconfig getifaddr en0 2>/dev/null || ifconfig | grep "inet " | grep -v 127.0.0.1 | head -1 | awk '{print $$2}' | cut -d: -f2); \
+	if [ -z "$$LOCAL_IP" ]; then \
+		LOCAL_IP=$$(hostname -I 2>/dev/null | awk '{print $$1}'); \
+	fi; \
+	if [ -z "$$LOCAL_IP" ]; then \
+		echo "⚠️  Could not determine local IP address"; \
+		echo "   Try accessing via: http://localhost:8000"; \
+	else \
+		echo "   Local:    http://localhost:8000"; \
+		echo "   Network:  http://$$LOCAL_IP:8000"; \
+		echo ""; \
+		echo "   Access from other devices on your network using the Network URL above"; \
+	fi
+	@echo ""
 
-restart-quick: stop start ## Quick restart without migrations or sync
+restart: stop migrate sync start-bg show-network-address show-logs ## Restart Containers with migrations and Stripe sync
+
+restart-quick: stop start-bg show-network-address show-logs ## Quick restart without migrations or sync
+
+show-logs: ## Show logs from all services (follows in real-time)
+	@echo ""
+	@echo "📋 Following Container Logs (Press Ctrl+C to stop):"
+	@echo "=================================================="
+	@echo ""
+	@docker compose logs -f
+
+show-logs-snapshot: ## Show a snapshot of logs from all services (last 30 lines)
+	@echo ""
+	@echo "📋 Container Logs (last 30 lines from each service):"
+	@echo "=================================================="
+	@echo ""
+	@echo "🔵 Web Service:"
+	@echo "----------------------------------------"
+	@docker compose logs web --tail 30 2>/dev/null || echo "No logs available"
+	@echo ""
+	@echo "🟢 Vite Service:"
+	@echo "----------------------------------------"
+	@docker compose logs vite --tail 30 2>/dev/null || echo "No logs available"
+	@echo ""
+	@echo "🟡 Celery Service:"
+	@echo "----------------------------------------"
+	@docker compose logs celery --tail 30 2>/dev/null || echo "No logs available"
+	@echo ""
 
 start-bg:  ## Run containers in the background
 	@docker compose up -d
+	@$(MAKE) show-network-address
 
 build: ## Build Containers
 	@docker compose build

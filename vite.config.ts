@@ -52,10 +52,14 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0', // Listen on all network interfaces for local network access
     port: 5173, // Default Vite dev server port, must match DJANGO_VITE settings
     strictPort: true, // Vite will exit if the port is already in use
+    cors: true, // Enable CORS for network access
     hmr: {
-      // host: 'localhost', // default of localhost is fine as long as Django is running there.
+      // Configure HMR to work with network access
+      // The client will connect to the same host that served the page
+      clientPort: 5173,
       // protocol: 'ws', // default of ws is fine. Change to 'wss' if Django (dev) server uses HTTPS.
     },
   },
