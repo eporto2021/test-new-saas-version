@@ -13,6 +13,8 @@ urlpatterns = [
     path("metered-billing-demo/", views.metered_billing_demo, name="metered_billing_demo"),
     # subscription service pages
     path("service/<str:service_slug>/", views.subscription_service, name="subscription_service"),
+    # authentication token generation for external services
+    path("service/<str:service_slug>/auth-token/", views.generate_auth_token, name="generate_auth_token"),
     # subscription request
     path("request/<str:product_id>/", views.request_subscription, name="request_subscription"),
     path("request-demo/<str:product_id>/", views.request_demo, name="request_demo"),

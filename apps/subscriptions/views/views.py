@@ -1,11 +1,14 @@
 import logging
 import os
+import json
 from django.core.files.storage import default_storage
+from django.core.signing import Signer, BadSignature
+from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.mail import mail_admins
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -525,3 +528,58 @@ View in admin: {request.build_absolute_uri(reverse('admin:subscriptions_subscrip
             _("There was an error submitting your request. Please try again or contact support.")
         )
         return HttpResponseRedirect(reverse('ecommerce:ecommerce_home'))
+
+
+@login_required
+def generate_auth_token(request, service_slug):
+    """
+    Generate a secure authentication token for accessing external services (like Flask apps).
+    The token is signed and includes user ID and expiration time.
+    """
+    from django.conf import settings
+    from django.utils.text import slugify
+    from djstripe.models import Subscription
+    from djstripe.enums import SubscriptionStatus
+    from apps.services.helpers import get_or_create_service_from_product
+    
+    # Verify user has access to this service
+    if not request.user.customer:
+        messages.error(request, _("You don't have any active subscriptions."))
+        return HttpResponseRedirect(reverse("subscriptions:subscription_details"))
+    
+    subscriptions = Subscription.objects.filter(
+        customer=request.user.customer,
+        status__in=[SubscriptionStatus.active, SubscriptionStatus.trialing, SubscriptionStatus.past_due]
+    )
+    
+    # Find the subscription that matches the service slug
+    matching_subscription = None
+    for subscription in subscriptions:
+        if subscription.items.exists():
+            first_item = subscription.items.first()
+            product = first_item.price.product
+            if slugify(product.name) == service_slug:
+                matching_subscription = subscription
+                break
+    
+    if not matching_subscription:
+        messages.error(request, _("You don't have access to this service."))
+        return HttpResponseRedirect(reverse("subscriptions:subscription_details"))
+    
+    # Generate signed token with user ID and expiration (valid for 1 hour)
+    expiration = datetime.now() + timedelta(hours=1)
+    token_data = {
+        'user_id': request.user.id,
+        'email': request.user.email,
+        'expires_at': expiration.isoformat(),
+        'service_slug': service_slug,
+    }
+    
+    signer = Signer()
+    signed_token = signer.sign(json.dumps(token_data))
+    
+    # Return token as JSON (can be used in redirect URL or passed to Flask app)
+    return JsonResponse({
+        'token': signed_token,
+        'expires_at': expiration.isoformat(),
+    })
