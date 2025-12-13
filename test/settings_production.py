@@ -106,12 +106,3 @@ MEDIA_ROOT = '/data/media'
 MEDIA_URL = '/media/'
 # Ensure the media directory exists
 os.makedirs(MEDIA_ROOT, exist_ok=True)
-
-# Vite Integration - Production settings
-# In production, the manifest is in static_root after collectstatic
-DJANGO_VITE = {
-    "default": {
-        "dev_mode": False,  # Explicitly disable dev mode in production
-        "manifest_path": BASE_DIR / "static_root" / ".vite" / "manifest.json",
-    }
-}

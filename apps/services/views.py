@@ -344,12 +344,7 @@ def delete_all_files(request, service_slug):
         user_files = UserDataFile.objects.filter(user=request.user, service=service)
         
         if not user_files.exists():
-            # Return 200 OK with a message - this is not an error condition
-            return JsonResponse({
-                'success': True, 
-                'message': 'No files to delete',
-                'deleted_count': 0
-            })
+            return JsonResponse({'success': False, 'error': 'No files to delete'}, status=400)
         
         file_count = user_files.count()
 
@@ -374,9 +369,6 @@ def delete_all_files(request, service_slug):
         })
         
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error in delete_all_files for service {service_slug}: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 

@@ -28,7 +28,10 @@ class Command(BaseCommand):
             
             if active_ecommerce_ids:
                 # Only create product configurations for products in ACTIVE_ECOMMERCE_PRODUCT_IDS
-                print(f"Creating product configurations for {len(active_ecommerce_ids)} products from ACTIVE_ECOMMERCE_PRODUCT_IDS")
+                print(
+                    f"Creating product configurations for {len(active_ecommerce_ids)} "
+                    f"products from ACTIVE_ECOMMERCE_PRODUCT_IDS"
+                )
                 for product_id in active_ecommerce_ids:
                     try:
                         product = Product.objects.get(id=product_id)
@@ -47,14 +50,19 @@ class Command(BaseCommand):
                             config.save()
                             print(f"Activated product configuration for {product.name}")
                     except Product.DoesNotExist:
-                        print(f"Warning: Product {product_id} not found in database. Make sure it's synced from Stripe.")
+                        print(
+                            f"Warning: Product {product_id} not found in database. "
+                            f"Make sure it's synced from Stripe."
+                        )
             else:
                 # If ACTIVE_ECOMMERCE_PRODUCT_IDS is empty, show nothing
                 print("ACTIVE_ECOMMERCE_PRODUCT_IDS is empty - no one-time purchase products will be displayed")
             
             # Always deactivate ProductConfigurations that are not in ACTIVE_ECOMMERCE_PRODUCT_IDS
             # (including ALL products if the list is empty)
-            configs_to_deactivate = ProductConfiguration.objects.filter(is_active=True).exclude(product__id__in=active_ecommerce_ids)
+            configs_to_deactivate = ProductConfiguration.objects.filter(
+                is_active=True
+            ).exclude(product__id__in=active_ecommerce_ids)
             if configs_to_deactivate.exists():
                 print(f"Deactivating {configs_to_deactivate.count()} product(s) not in ACTIVE_ECOMMERCE_PRODUCT_IDS")
                 for config in configs_to_deactivate:

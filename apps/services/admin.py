@@ -25,7 +25,10 @@ class UserServiceAccessAdmin(admin.ModelAdmin):
 
 @admin.register(UserDataFile)
 class UserDataFileAdmin(admin.ModelAdmin):
-    list_display = ['original_filename', 'user', 'service', 'file_type', 'processing_status', 'file_size_human', 'created_at']
+    list_display = [
+        'original_filename', 'user', 'service', 'file_type',
+        'processing_status', 'file_size_human', 'created_at'
+    ]
     list_filter = ['processing_status', 'file_type', 'service', 'created_at']
     search_fields = ['original_filename', 'user__email', 'service__name']
     readonly_fields = ['created_at', 'processed_at', 'file_size_human']
