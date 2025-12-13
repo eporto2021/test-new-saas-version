@@ -92,3 +92,62 @@ def vite_asset_url_network(context, path):
         source_path = ENTRY_TO_SOURCE.get(path, path)
         return f'/static/{source_path}'
 
+
+@register.simple_tag(takes_context=True)
+def vite_asset(context, path):
+    """
+    Custom vite_asset tag that handles path conversion from source paths to entry names.
+    This wraps django-vite's vite_asset tag to work with both dev and production.
+    """
+    from django_vite.templatetags.django_vite import vite_asset as django_vite_asset
+    
+    # Mapping from entry names to source paths (for dev mode)
+    ENTRY_TO_SOURCE = {
+        'site-base-css': 'assets/styles/site-base.css',
+        'site-tailwind-css': 'assets/styles/site-tailwind.css',
+        'site': 'assets/javascript/site.js',
+        'app': 'assets/javascript/app.js',
+        'pegasus': 'assets/javascript/pegasus/pegasus.js',
+        'react-object-lifecycle': 'assets/javascript/pegasus/examples/react/react-object-lifecycle.jsx',
+        'vue-object-lifecycle': 'assets/javascript/pegasus/examples/vue/vue-object-lifecycle.js',
+        'chat-ws-initialize': 'assets/javascript/chat/ws_initialize.ts',
+    }
+    
+    # Reverse mapping from source paths to entry names (for production manifest lookup)
+    SOURCE_TO_ENTRY = {v: k for k, v in ENTRY_TO_SOURCE.items()}
+    
+    # In dev mode, use source paths directly
+    if settings.DEBUG and hasattr(settings, 'DJANGO_VITE'):
+        djv_config = settings.DJANGO_VITE.get('default', {})
+        if djv_config.get('dev_mode', False):
+            # In dev mode, use source path as-is
+            try:
+                return django_vite_asset(context, path)
+            except Exception:
+                # Fallback
+                source_path = ENTRY_TO_SOURCE.get(path, path)
+                return f'<script type="module" src="/static/{source_path}"></script>'
+    
+    # In production mode, convert source paths to entry names for manifest lookup
+    # The manifest uses entry names as keys, so prioritize conversion
+    entry_name = SOURCE_TO_ENTRY.get(path, path)
+    
+    # Try with entry name first (production manifest uses entry names)
+    if entry_name != path:
+        try:
+            return django_vite_asset(context, entry_name)
+        except Exception:
+            pass
+    
+    # If entry name conversion didn't work, try with original path (might already be entry name)
+    try:
+        return django_vite_asset(context, path)
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to load vite asset {path} (tried as entry name {entry_name}): {e}")
+        # Final fallback - generate script tag with source path
+        source_path = ENTRY_TO_SOURCE.get(path, path)
+        return mark_safe(f'<script type="module" src="/static/{source_path}"></script>')
+

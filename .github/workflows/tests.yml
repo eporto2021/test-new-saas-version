@@ -1,11 +1,14 @@
 name: Run Django Tests
 on:
+  workflow_run:
+    workflows: ["Build Front End"]
+    types:
+      - completed
   pull_request:
-  push:
-    branches:
-      - main
 jobs:
   code-style:
+    # Only run if triggered by workflow_run and build_frontend succeeded, or if triggered by PR
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,6 +19,8 @@ jobs:
       - name: Run pre-commit hooks
         uses: pre-commit/action@v3.0.0
   tests:
+    # Only run if triggered by workflow_run and build_frontend succeeded, or if triggered by PR
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
