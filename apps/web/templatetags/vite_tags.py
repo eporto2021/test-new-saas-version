@@ -41,24 +41,54 @@ def vite_asset_url_network(context, path):
     """
     Custom vite_asset_url tag that uses the request host for dev mode.
     This ensures CSS and other assets load correctly when accessing via network IP.
+    
+    In dev mode: expects source paths (e.g., 'assets/styles/site-base.css')
+    In production: can use entry names (e.g., 'site-base-css') or source paths
     """
     from django_vite.templatetags.django_vite import vite_asset_url as django_vite_asset_url
     
-    # In dev mode, we need to use the request host
+    # Mapping from entry names to source paths (for dev mode)
+    ENTRY_TO_SOURCE = {
+        'site-base-css': 'assets/styles/site-base.css',
+        'site-tailwind-css': 'assets/styles/site-tailwind.css',
+        'site': 'assets/javascript/site.js',
+        'app': 'assets/javascript/app.js',
+        'pegasus': 'assets/javascript/pegasus/pegasus.js',
+        'react-object-lifecycle': 'assets/javascript/pegasus/examples/react/react-object-lifecycle.jsx',
+        'vue-object-lifecycle': 'assets/javascript/pegasus/examples/vue/vue-object-lifecycle.js',
+        'chat-ws-initialize': 'assets/javascript/chat/ws_initialize.ts',
+    }
+    
+    # Reverse mapping from source paths to entry names (for production manifest lookup)
+    SOURCE_TO_ENTRY = {v: k for k, v in ENTRY_TO_SOURCE.items()}
+    
+    # In dev mode, we need to use the request host and source paths
     if settings.DEBUG and hasattr(settings, 'DJANGO_VITE'):
         djv_config = settings.DJANGO_VITE.get('default', {})
         if djv_config.get('dev_mode', False):
             request = context.get('request')
             if request:
                 vite_url = get_vite_dev_server_url(request)
+                # Convert entry name to source path if needed
+                source_path = ENTRY_TO_SOURCE.get(path, path)
                 # Return the dev server URL for the asset
                 # Vite serves assets from /static/ in dev mode
-                return f'{vite_url}/static/{path}'
+                return f'{vite_url}/static/{source_path}'
     
-    # Fallback to django-vite's default behavior (production mode)
+    # In production mode, try django-vite with manifest lookup
+    # The manifest uses entry names as keys, so convert source paths to entry names if needed
     try:
+        # First try with the path as-is (might be entry name or source path)
         return django_vite_asset_url(context, path)
     except Exception:
-        # If django-vite fails, return a fallback
-        return f'/static/{path}'
+        # If that fails, try converting source path to entry name
+        entry_name = SOURCE_TO_ENTRY.get(path, path)
+        if entry_name != path:
+            try:
+                return django_vite_asset_url(context, entry_name)
+            except Exception:
+                pass
+        # Final fallback - use source path directly
+        source_path = ENTRY_TO_SOURCE.get(path, path)
+        return f'/static/{source_path}'
 
