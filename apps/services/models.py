@@ -93,9 +93,7 @@ class UserServiceAccess(models.Model):
         """Check if this access is still valid"""
         if not self.is_active:
             return False
-        if self.expires_at and self.expires_at < timezone.now():
-            return False
-        return True
+        return not (self.expires_at and self.expires_at < timezone.now())
 
 
 class UserDataFile(models.Model):

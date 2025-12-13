@@ -1,0 +1,50 @@
+title = "Gitleaks Configuration"
+
+[extend]
+# Use default Gitleaks rules
+useDefault = true
+
+[allowlist]
+description = "Allowlist for known safe patterns"
+paths = [
+    '''\.lock$''',
+    '''\.log$''',
+    '''\.min\.js$''',
+    '''package-lock\.json$''',
+    '''yarn\.lock$''',
+    '''uv\.lock$''',
+    '''\.mo$''',
+    '''\.po$''',
+    '''node_modules/''',
+    '''__pycache__/''',
+    '''\.pyc$''',
+    '''static_root/''',
+    '''media/''',
+    '''\.env\.example$''',
+    '''\.env\.template$''',
+    '''\.env\.sample$''',
+    '''\.git/''',
+    '''\.venv/''',
+    '''venv/''',
+    '''\.direnv/''',
+]
+
+commits = [
+    # Add commit hashes here if you need to allowlist specific commits
+]
+
+regexes = [
+    # Add regex patterns here for known false positives
+    '''example\.com''',
+    '''test.*key''',
+    '''dummy.*secret''',
+    '''placeholder.*token''',
+]
+
+[detectors]
+# Enable all detectors
+enable = "all"
+
+# Disable specific detectors if needed (uncomment and modify as needed)
+# disable = []
+

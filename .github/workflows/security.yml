@@ -1,0 +1,262 @@
+name: Security Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  python-dependency-scan:
+    name: Python Dependency Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.2"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: Install pip-audit
+        run: |
+          uv pip install pip-audit
+
+      - name: Run pip-audit (check for vulnerabilities)
+        run: |
+          uv pip audit --format json --output pip-audit-report.json || true
+          uv pip audit --format table || true
+        continue-on-error: true
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+          retention-days: 30
+
+      - name: Install Safety
+        run: |
+          uv pip install safety
+
+      - name: Run Safety check
+        run: |
+          uv run safety check --json --output safety-report.json || true
+          uv run safety check || true
+        continue-on-error: true
+
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-report
+          path: safety-report.json
+          retention-days: 30
+
+  node-dependency-scan:
+    name: Node.js Dependency Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package-path:
+          - package.json
+          - api-client/package.json
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.package-path == 'api-client/package.json' && 'api-client' || '.' }}
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+          fi
+
+      - name: Run npm audit
+        working-directory: ${{ matrix.package-path == 'api-client/package.json' && 'api-client' || '.' }}
+        run: |
+          npm audit --audit-level=moderate --json > npm-audit-report.json || true
+          npm audit --audit-level=moderate || true
+        continue-on-error: true
+
+      - name: Upload npm audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-report-${{ matrix.package-path }}
+          path: ${{ matrix.package-path == 'api-client/package.json' && 'api-client/npm-audit-report.json' || 'npm-audit-report.json' }}
+          retention-days: 30
+
+      - name: Install Snyk
+        uses: snyk/actions/setup@master
+
+      - name: Run Snyk test
+        working-directory: ${{ matrix.package-path == 'api-client/package.json' && 'api-client' || '.' }}
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=medium --json-file-output=snyk-report.json || true
+
+      - name: Upload Snyk report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-report-${{ matrix.package-path }}
+          path: ${{ matrix.package-path == 'api-client/package.json' && 'api-client/snyk-report.json' || 'snyk-report.json' }}
+          retention-days: 30
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret scanning
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-path: .gitleaks.toml
+          no-git: false
+          exit-code: 1
+          redact: true
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+  code-security-scan:
+    name: Python Code Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.2"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: Install Bandit
+        run: |
+          uv pip install bandit[toml]
+
+      - name: Run Bandit security scan
+        run: |
+          uv run bandit -r . -f json -o bandit-report.json || true
+          uv run bandit -r . -ll || true
+        continue-on-error: true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 30
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.2"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pip-licenses
+        run: |
+          uv pip install pip-licenses
+
+      - name: Check Python licenses
+        run: |
+          uv sync
+          uv run pip-licenses --format=json --output-file=python-licenses.json || true
+          uv run pip-licenses --with-urls --with-description || true
+        continue-on-error: true
+
+      - name: Upload Python licenses report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-licenses
+          path: python-licenses.json
+          retention-days: 30
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install license-checker
+        run: |
+          npm install -g license-checker
+
+      - name: Check Node.js licenses
+        run: |
+          npm ci
+          license-checker --json > node-licenses.json || true
+          license-checker || true
+        continue-on-error: true
+
+      - name: Upload Node.js licenses report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: node-licenses
+          path: node-licenses.json
+          retention-days: 30
+

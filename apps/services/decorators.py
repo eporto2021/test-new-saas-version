@@ -45,12 +45,11 @@ def service_access_required(service_slug):
                     has_access = False
             
             if not has_access:
-                messages.error(
-                    request, 
-                    _("Sorry, you don't have access to {service_name}. Please upgrade your subscription to access this service.").format(
-                        service_name=service.name
-                    )
-                )
+                error_msg = _(
+                    "Sorry, you don't have access to {service_name}. "
+                    "Please upgrade your subscription to access this service."
+                ).format(service_name=service.name)
+                messages.error(request, error_msg)
                 return render(request, 'services/no_access.html', {
                     'service': service,
                     'upgrade_url': reverse('subscriptions:subscription')
@@ -93,10 +92,12 @@ def service_access_required_ajax(service_slug):
                     has_access = False
             
             if not has_access:
+                error_msg = _(
+                    "Sorry, you don't have access to {service_name}. "
+                    "Please upgrade your subscription."
+                ).format(service_name=service.name)
                 return JsonResponse({
-                    'error': _("Sorry, you don't have access to {service_name}. Please upgrade your subscription.").format(
-                        service_name=service.name
-                    ),
+                    'error': error_msg,
                     'upgrade_url': reverse('subscriptions:subscription')
                 }, status=403)
             

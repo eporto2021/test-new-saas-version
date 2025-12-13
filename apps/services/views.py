@@ -103,12 +103,11 @@ def generic_service_view(request, service_slug):
     from .helpers import user_has_service_access
     
     if not user_has_service_access(request.user, service_slug):
-        messages.error(
-            request, 
-            _("Sorry, you don't have access to {service_name}. Please upgrade your subscription to access this service.").format(
-                service_name=service.name
-            )
-        )
+        error_msg = _(
+            "Sorry, you don't have access to {service_name}. "
+            "Please upgrade your subscription to access this service."
+        ).format(service_name=service.name)
+        messages.error(request, error_msg)
         return render(request, 'services/no_access.html', {
             'service': service,
             'upgrade_url': reverse('subscriptions:subscription')
@@ -118,7 +117,7 @@ def generic_service_view(request, service_slug):
     if request.method == 'POST':
         form = DataFileUploadForm(request.POST, request.FILES, user=request.user, service=service)
         if form.is_valid():
-            data_file = form.save()
+            form.save()
             messages.success(request, _("File uploaded successfully! Status: Pending."))
             
             return redirect('services:generic_service', service_slug=service_slug)
@@ -243,7 +242,7 @@ def process_data_file(request, service_slug):
             return JsonResponse({'success': False, 'error': 'File ID is required'}, status=400)
         
         # Get the file and verify ownership
-        data_file = UserDataFile.objects.get(id=file_id, user=request.user)
+        UserDataFile.objects.get(id=file_id, user=request.user)
         
         # Import the task here to avoid circular imports
         from .tasks import process_user_data_file
@@ -318,9 +317,14 @@ def process_all_files(request, service_slug):
         process_all_user_files.delay(request.user.id, service_slug)
 
         # Respond with count for UX - count ALL files for this service
-        file_count = UserDataFile.objects.filter(user=request.user, service=service).count()
+        file_count = UserDataFile.objects.filter(
+            user=request.user, service=service
+        ).count()
         if file_count == 0:
-            return JsonResponse({'success': False, 'error': 'No files to process. Please upload files first.'}, status=400)
+            error_msg = 'No files to process. Please upload files first.'
+            return JsonResponse(
+                {'success': False, 'error': error_msg}, status=400
+            )
 
         return JsonResponse({
             'success': True,

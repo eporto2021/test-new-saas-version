@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 import tempfile
+import contextlib
 from datetime import datetime
 from pathlib import Path
 import importlib.util
@@ -33,7 +34,7 @@ def process_user_data_file(file_id):
         processed_data, summary = process_data_file(data_file)
         
         # Create processed data record
-        processed_file = UserProcessedData.objects.create(
+        UserProcessedData.objects.create(
             data_file=data_file,
             processed_file=processed_data,
             summary_data=summary
@@ -98,10 +99,11 @@ def process_data_file(data_file):
             with open(temp_path, 'r') as f:
                 json_data = json.load(f)
             # Convert JSON to DataFrame (assuming it's a list of records)
-            if isinstance(json_data, list):
-                df = pd.DataFrame(json_data)
-            else:
-                df = pd.json_normalize(json_data)
+            df = (
+                pd.DataFrame(json_data)
+                if isinstance(json_data, list)
+                else pd.json_normalize(json_data)
+            )
         else:
             # For txt files, try to read as CSV
             df = pd.read_csv(temp_path, sep='\t')
@@ -150,10 +152,8 @@ def process_data_file(data_file):
                 processed_content = f.read()
         finally:
             # Clean up output temp file
-            try:
+            with contextlib.suppress(Exception):
                 os.unlink(output_path)
-            except Exception:
-                pass
         
         # Create a file name for the processed data
         processed_filename = f"processed_{data_file.original_filename}"
@@ -166,10 +166,8 @@ def process_data_file(data_file):
         raise e
     finally:
         # Clean up input temp file
-        try:
+        with contextlib.suppress(Exception):
             os.unlink(temp_path)
-        except Exception:
-            pass
 
 
 def _load_user_processed_module(user_id: int, service_name: str):
@@ -184,7 +182,8 @@ def _load_user_processed_module(user_id: int, service_name: str):
         if not module_path.exists():
             logger.warning(f"processed_file.py not found at: {module_path}")
             return None
-        spec = importlib.util.spec_from_file_location(f"user_{user_id}_{service_name}_processed_module", str(module_path))
+        module_name = f"user_{user_id}_{service_name}_processed_module"
+        spec = importlib.util.spec_from_file_location(module_name, str(module_path))
         if spec is None or spec.loader is None:
             logger.warning(f"Could not create spec for module at: {module_path}")
             return None
@@ -240,25 +239,22 @@ def _call_user_batch_processor(module, data_files_queryset):
                     
                     # Create temp file with original extension
                     suffix = Path(df.original_filename).suffix or '.dat'
-                    temp_file = tempfile.NamedTemporaryFile(mode='wb', suffix=suffix, delete=False)
+                    with tempfile.NamedTemporaryFile(mode='wb', suffix=suffix, delete=False) as temp_file:
+                        # Copy file content from storage to temp file
+                        with df.file.open('rb') as source:
+                            temp_file.write(source.read())
+                        temp_file_path = temp_file.name
                     
-                    # Copy file content from storage to temp file
-                    with df.file.open('rb') as source:
-                        temp_file.write(source.read())
-                    temp_file.close()
-                    
-                    temp_files.append(temp_file.name)
-                    file_paths.append(temp_file.name)
+                    temp_files.append(temp_file_path)
+                    file_paths.append(temp_file_path)
                     
                 except Exception as e:
                     logger.error(f"Error preparing file {df.id} ({df.original_filename}): {e}")
                     # Clean up any temp files created so far
                     for temp_file in temp_files:
-                        try:
+                        with contextlib.suppress(Exception):
                             os.unlink(temp_file)
-                        except Exception:
-                            pass
-                    raise RuntimeError(f"Failed to prepare file {df.original_filename}: {e}")
+                    raise RuntimeError(f"Failed to prepare file {df.original_filename}: {e}") from e
             
             # Check if we have any files to process
             if not file_paths:
@@ -277,16 +273,12 @@ def _call_user_batch_processor(module, data_files_queryset):
                 content = f.read()
 
             # Clean up temp files
-            try:
+            with contextlib.suppress(Exception):
                 os.unlink(final_path)
-            except Exception:
-                pass
             
             for temp_file in temp_files:
-                try:
+                with contextlib.suppress(Exception):
                     os.unlink(temp_file)
-                except Exception:
-                    pass
 
             timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
             filename = f"processed_batch_{timestamp}.xlsx"
@@ -302,11 +294,9 @@ def _call_user_batch_processor(module, data_files_queryset):
         except Exception as e:
             # Clean up temp files on error
             for temp_file in temp_files:
-                try:
+                with contextlib.suppress(Exception):
                     os.unlink(temp_file)
-                except Exception:
-                    pass
-            raise e
+            raise
 
     raise RuntimeError("No suitable batch processor found in user module")
 
@@ -330,7 +320,11 @@ def process_all_user_files(user_id: int, service_slug: str):
                 missing_files.append(f"{df.original_filename} (id={df.id}, path={df.file.name})")
         
         if missing_files:
-            error_msg = f"Cannot process files - {len(missing_files)} file(s) missing from storage: {', '.join(missing_files[:3])}"
+            missing_list = ', '.join(missing_files[:3])
+            error_msg = (
+                f"Cannot process files - {len(missing_files)} file(s) "
+                f"missing from storage: {missing_list}"
+            )
             if len(missing_files) > 3:
                 error_msg += f" and {len(missing_files) - 3} more"
             logger.error(f"Missing files for user={user_id}, service={service_slug}: {missing_files}")
@@ -383,7 +377,11 @@ def process_all_user_files(user_id: int, service_slug: str):
         logger.error(f"Missing files for user={user_id}, service={service_slug}: {e}")
         try:
             service = Service.objects.get(slug=service_slug)
-            pending_files = UserDataFile.objects.filter(user_id=user_id, service=service, processing_status__in=['pending','processing'])
+            pending_files = UserDataFile.objects.filter(
+                user_id=user_id,
+                service=service,
+                processing_status__in=['pending', 'processing']
+            )
             for df in pending_files:
                 df.processing_status = 'failed'
                 df.processing_log = f"File not found in storage. Please re-upload your file. Error: {e}"
@@ -396,7 +394,11 @@ def process_all_user_files(user_id: int, service_slug: str):
         # Attempt to mark files as failed
         try:
             service = Service.objects.get(slug=service_slug)
-            pending_files = UserDataFile.objects.filter(user_id=user_id, service=service, processing_status__in=['pending','processing'])
+            pending_files = UserDataFile.objects.filter(
+                user_id=user_id,
+                service=service,
+                processing_status__in=['pending', 'processing']
+            )
             for df in pending_files:
                 df.processing_status = 'failed'
                 df.processing_log = f"Batch processing failed: {e}"
